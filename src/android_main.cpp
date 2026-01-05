@@ -101,6 +101,16 @@ extern "C" {
         return 0;
     }
 
+    void ols_write_to_log(char const *message)
+    {
+        try {
+            BOOSTER_ERROR("ols") <<"Log from the app:" << message;
+        }
+        catch(std::exception const &e) {
+            LOG("OLS INIT FAILED %s",e.what());
+        }
+    }
+
     int ols_android_run()
     {
         try {
