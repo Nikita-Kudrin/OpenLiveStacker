@@ -353,6 +353,15 @@ namespace ols
                 if(bits != 16) 
                     shift_to16(bits,reinterpret_cast<uint16_t *>(buf_.data()),buf_.size()/2);
             }
+            /// Convert RGB to internal BGR order
+            if(bpp == 3 && frm.format == stream_rgb24) {
+                unsigned N = buf_.size() - 2;
+                for(unsigned i=0;i<N;i+=3) {
+                    uint8_t p = buf_[i];
+                    buf_[i] = buf_[i+2];
+                    buf_[i+2] = p;
+                }
+            }
             
 #ifdef _WIN32
             ::ols_util::timeval tv;
@@ -497,19 +506,19 @@ namespace ols
                 {
                 case MAKEFOURCC('G', 'B', 'R', 'G'):
                     // printf("Toupcam_get_RawFormat(%s, %d)\n", "GBRG", bitsperpixel);
-                    bayerPattern_ = bayer_gr;
+                    bayerPattern_ = bayer_gb;
                     break;
                 case MAKEFOURCC('R', 'G', 'G', 'B'):
                     // printf("Toupcam_get_RawFormat(%s, %d)\n", "RGGB", bitsperpixel);
-                    bayerPattern_ = bayer_bg;
+                    bayerPattern_ = bayer_rg;
                     break;
                 case MAKEFOURCC('B', 'G', 'G', 'R'):
                     // printf("Toupcam_get_RawFormat(%s, %d)\n", "BGGR", bitsperpixel);
-                    bayerPattern_ = bayer_rg;
+                    bayerPattern_ = bayer_bg;
                     break;
                 case MAKEFOURCC('G', 'R', 'B', 'G'):
                     // printf("Toupcam_get_RawFormat(%s, %d)\n", "GRBG", bitsperpixel);
-                    bayerPattern_ = bayer_gb;
+                    bayerPattern_ = bayer_gr;
                     break;
                 case MAKEFOURCC('Y', 'Y', 'Y', 'Y'):
                     // printf("Toupcam_get_RawFormat(%s, %d)\n", "YYYY", bitsperpixel);
