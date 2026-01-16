@@ -576,7 +576,7 @@ namespace ols {
                 LOG("No CONNECT in connection\n");
                 return;
             }
-            if(ptr->getState() != ISS_ON) {
+            if(ptr->s != ISS_ON) {
                 LOG("Connecting to %s\n",name_.c_str());
                 connectDevice(name_.c_str());
             }
@@ -621,7 +621,7 @@ namespace ols {
             if(!p.isValid())
                 return;
             std::string label;
-            for(unsigned i=0;i<p.count();i++) {
+            for(unsigned i=0;i<p.size();i++) {
                 if(p[i].getState() == ISS_ON) {
                     label = p[i].getLabel();
                     for(char &c:label) {

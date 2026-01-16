@@ -200,7 +200,7 @@ namespace {
                     res |= proto_serial;
                 }
                 else  {
-                    if(wser->getState() == ISS_ON) {
+                    if(wser->s == ISS_ON) {
                         switchTo(p,"CONNECTION_TCP",e);
                     }
                 }
@@ -215,10 +215,10 @@ namespace {
             if(!p.isValid()) {
                 return proto_none;
             }
-            INDI::WidgetViewSwitch *w;
-            if((w=p.findWidgetByName("CONNECTION_TCP"))!=nullptr && w->getState() == ISS_ON)
+            ISwitch *w;
+            if((w=p.findWidgetByName("CONNECTION_TCP"))!=nullptr && w->s == ISS_ON)
                 return proto_inet;
-            if((w=p.findWidgetByName("CONNECTION_SERIAL"))!=nullptr && w->getState() == ISS_ON) {
+            if((w=p.findWidgetByName("CONNECTION_SERIAL"))!=nullptr && w->s == ISS_ON) {
                 if(disable_serial_) {
                     switchTo(p,"CONNECTION_TCP",e);
                     return proto_inet;
@@ -273,7 +273,7 @@ namespace {
                     res = getPropText("DEVICE_ADDRESS","ADDRESS",err) + ":" + getPropText("DEVICE_ADDRESS","PORT",err);
                     INDI::PropertySwitch ctype = device_.getProperty("CONNECTION_TYPE");
                     if(ctype.isValid()) {
-                        for(unsigned i=0;i<ctype.count();i++) {
+                        for(unsigned i=0;i<ctype.size();i++) {
                             if(ctype[i].getState() == ISS_ON) {
                                 std::string type = ctype[i].getName();
                                 to_lower(type);
@@ -304,7 +304,7 @@ namespace {
             guard_type g(lock_);
             INDI::PropertySwitch p = device_.getProperty("MERIDIAN_ACTION");
             if(p.isValid()) {
-                for(unsigned i=0;i<p.count();i++) {
+                for(unsigned i=0;i<p.size();i++) {
                     if(p[i].getState() == ISS_ON) {
                         if(p[i].getName() == std::string("IOP_MB_STOP"))
                             return on_meridian_stop;
@@ -683,7 +683,7 @@ namespace {
         }
         void handle_polling(INDI::PropertyNumber p)
         {
-            if(!p.isValid() || p.count() != 1) {
+            if(!p.isValid() || p.size() != 1) {
                 LOGP("Invalid polling prop format\n");
                 return;
             }
@@ -723,7 +723,7 @@ namespace {
         void handle_connection(INDI::PropertySwitch p)
         {
             auto ptr = p.findWidgetByName("CONNECT");
-            if(ptr && ptr->getState() == ISS_ON) {
+            if(ptr && ptr->s == ISS_ON) {
                 connected_ = true;
             }
             else {
@@ -765,7 +765,7 @@ namespace {
             auto w_ton = p.findWidgetByName("TRACK_ON");
             if(!w_ton)
                 return -1;
-            if(w_ton->getState() == ISS_OFF) 
+            if(w_ton->s == ISS_OFF) 
                 return 0;
             return 1;
         }
@@ -792,7 +792,7 @@ namespace {
             auto pe = p.findWidgetByName("PIER_EAST");
             if(!pw || !pe)
                 return false;
-            bool pier_east = pe->getState() == ISS_ON;
+            bool pier_east = pe->s == ISS_ON;
             if(is_tracking() != 1)
                 return false;
             auto st = device_.getProperty("EQUATORIAL_EOD_COORD").getState();
@@ -986,7 +986,7 @@ namespace {
                 return;
             }
             bool update = force;
-            for(unsigned i=0;i<p.count();i++) {
+            for(unsigned i=0;i<p.size();i++) {
                 if(p[i].isNameMatch(name.c_str())) {
                     if(p[i].getState() != ISS_ON) {
                         p[i].setState(ISS_ON);
