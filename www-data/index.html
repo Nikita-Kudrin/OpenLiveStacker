@@ -303,6 +303,12 @@
         <p>
             <span id="extra_opt_toggle" class="nowr" ><label for="extra_opt_checked">Alpha Features</label><input class = "saved_input" id="extra_opt_checked" type="checkbox" onchange="enableAlphaFeatures(this.checked)" ></span>
         </p>
+        <p>
+            <span class="nowr" ><label for="stack_binoviewers">Binoviewers</label><input class="saved_input" id="stack_binoviewers" type="checkbox" onchange="toggleBinoviewers(this.checked)" ></span>
+        </p>
+        <p id="ipd_row" style="display:none">
+            <span class="nowr" >Interpupillary Distance (px):<input class="saved_input val_input" id="stack_ipd" type="number" value="500"></span>
+        </p>
         <p><button id="manual_geolocation" onclick="getBrowserGeolocation();">Get Geolocation</button></p>
         <p>
             <select id="font_size_ctl" class="saved_input" onchange="updateFontSize()">

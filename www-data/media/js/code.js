@@ -246,6 +246,10 @@ function updateSavedInputs()
             }
             el.dispatchEvent(new Event("input"));
             el.dispatchEvent(new Event("change"));
+            // Also trigger onchange attribute handler if present (dispatchEvent doesn't trigger attribute handlers)
+            if(el.onchange) {
+                el.onchange();
+            }
         }
         el.addEventListener('input',(e)=> { saveInputValue(e.currentTarget.id); });
     }
@@ -2106,6 +2110,11 @@ function toggleFS(fs)
     else {
         document.exitFullscreen();
     }
+}
+
+function toggleBinoviewers(checked)
+{
+    document.getElementById('ipd_row').style.display = checked ? '' : 'none';
 }
 
 
