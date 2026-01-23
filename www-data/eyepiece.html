@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/x-icon" href="/media/img/facicon.png" >
+    <link rel="icon" type="image/x-icon" href="/media/img/facicon.png">
     <title>OpenLiveStacker Eyepiece</title>
     <style>
         body, html {
@@ -28,7 +28,10 @@
             position: absolute;
             overflow: hidden;
             border-radius: 50%;
-            border: 5px solid red; /* DEBUG: red ring to visualize positioning */
+        }
+
+        .eye-container.debug {
+            border: 5px solid red; /* DEBUG: red ring to visualize positioning of the eyepiece circle */
         }
 
         .eye-canvas {
@@ -42,8 +45,10 @@
 <div id="container"></div>
 
 <script>
-    // Debug logging - enabled when OLS_DEBUG config is set
+    /** Debug logging is set in ./build/config.json
+     * "ols_data": { "debug_log": true, } */
     var debugEnabled = false;
+
     function debugLog() {
         if (debugEnabled) {
             console.log.apply(console, arguments);
@@ -92,6 +97,7 @@
     var current_binoviewers = null;
     var current_ipd = null;
     var current_stream = null;
+    var current_debug = null;
     var streamImage = new Image();
 
     function drawToCanvas(canvas, img) {
@@ -132,9 +138,6 @@
 
     function render() {
         var canvases = document.getElementsByClassName('eye-canvas');
-        if (canvases.length > 1) {
-            debugLog('Rendering to', canvases.length, 'canvases');
-        }
         for (var i = 0; i < canvases.length; i++) {
             drawToCanvas(canvases[i], streamImage);
         }
@@ -144,25 +147,29 @@
     function updateLayout() {
         restCall('get', '/api/stacker/status', null, function (statusData) {
             var stream = (statusData && statusData.status !== 'idle') ? 'stacked' : 'live';
+
             restCall('get', '/api/config/ols_data', null, function (data) {
                 var config = (data && data.value) || {};
                 // Handle both boolean and string values for binoviewers
                 var binoviewers = config.stack_binoviewers === true || config.stack_binoviewers === 'true';
                 var ipd = parseFloat(config.stack_ipd) || 500;
-                debugEnabled = config.ols_debug === true || config.ols_debug === 'true';
+                // Read debug_log from ols_data config
+                debugEnabled = (config.debug_log === true || config.debug_log === 'true') || false;
                 debugLog('Binoviewers config:', config.stack_binoviewers, 'parsed:', binoviewers);
 
                 if (stream !== current_stream) {
                     streamImage.src = '/api/video/' + stream;
                 }
 
-                if (binoviewers === current_binoviewers && ipd === current_ipd && stream === current_stream) {
+                if (binoviewers === current_binoviewers && ipd === current_ipd && stream === current_stream && debugEnabled === current_debug) {
                     setTimeout(updateLayout, 2000);
                     return;
                 }
+
                 current_binoviewers = binoviewers;
                 current_ipd = ipd;
                 current_stream = stream;
+                current_debug = debugEnabled;
 
                 var container = document.getElementById('container');
                 container.innerHTML = '';
@@ -232,14 +239,14 @@
 
     function createEye() {
         var div = document.createElement('div');
-        div.className = 'eye-container';
+        div.className = debugEnabled ? 'eye-container debug' : 'eye-container';
         var canvas = document.createElement('canvas');
         canvas.className = 'eye-canvas';
         div.appendChild(canvas);
         return div;
     }
 
-    window.onload = function() {
+    window.onload = function () {
         updateLayout();
         requestAnimationFrame(render);
     };
