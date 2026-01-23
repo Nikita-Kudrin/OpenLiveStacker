@@ -98,6 +98,11 @@
     var current_ipd = null;
     var current_stream = null;
     var current_debug = null;
+    var current_width = null;
+    var current_height = null;
+    var updateLayoutTimeout = null;
+    var last_status_data = null;
+    var last_config_data = null;
     var streamImage = new Image();
 
     function drawToCanvas(canvas, img) {
@@ -144,95 +149,108 @@
         requestAnimationFrame(render);
     }
 
+    function applyLayout() {
+        if (!last_config_data) return;
+        var statusData = last_status_data;
+        var data = last_config_data;
+
+        var stream = (statusData && statusData.status !== 'idle') ? 'stacked' : 'live';
+        var config = (data && data.value) || {};
+        // Handle both boolean and string values for binoviewers
+        var binoviewers = config.stack_binoviewers === true || config.stack_binoviewers === 'true';
+        var ipd = parseFloat(config.stack_ipd) || 500;
+        // Read debug_log from ols_data config
+        debugEnabled = (config.debug_log === true || config.debug_log === 'true') || false;
+
+        if (stream !== current_stream) {
+            streamImage.src = '/api/video/' + stream;
+        }
+
+        var screenWidth = window.innerWidth;
+        var screenHeight = window.innerHeight;
+
+        if (binoviewers === current_binoviewers && ipd === current_ipd && stream === current_stream && debugEnabled === current_debug &&
+            screenWidth === current_width && screenHeight === current_height) {
+            return;
+        }
+
+        current_binoviewers = binoviewers;
+        current_ipd = ipd;
+        current_stream = stream;
+        current_debug = debugEnabled;
+        current_width = screenWidth;
+        current_height = screenHeight;
+
+        var container = document.getElementById('container');
+        container.innerHTML = '';
+
+        if (!binoviewers) {
+            debugLog('Creating single eye layout');
+            var eye = createEye();
+            var size = 'min(98vw, 98vh)';
+            eye.style.width = size;
+            eye.style.height = size;
+            eye.style.top = '50%';
+            eye.style.left = '50%';
+            eye.style.transform = 'translate(-50%, -50%)';
+            container.appendChild(eye);
+        } else {
+            debugLog('Creating binoviewers layout with IPD (px):', ipd);
+            var leftEye = createEye();
+            var rightEye = createEye();
+
+            // Calculate optimal eye size considering IPD (in pixels) and screen dimensions
+            var ipdPx = ipd;
+
+            // Constraint 1: Circles must not intersect
+            // Distance between centers = ipdPx, so radius must be <= ipdPx/2
+            var maxRadiusNoIntersect = ipdPx / 2;
+
+            // Constraint 2: Circles must not overflow screen edges
+            // Left circle: center at (screenWidth/2 - ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
+            // Right circle: center at (screenWidth/2 + ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
+            var maxRadiusForScreenWidth = (screenWidth / 2) - (ipdPx / 2);
+
+            // Constraint 3: Height constraint
+            var maxRadiusForHeight = screenHeight / 2;
+
+            // Use the smallest constraint with 2% margin
+            var radius = Math.min(maxRadiusNoIntersect, maxRadiusForScreenWidth, maxRadiusForHeight) * 0.98;
+            var diameter = radius * 2;
+
+            debugLog('Screen:', screenWidth, 'x', screenHeight, 'IPD px:', ipdPx);
+            debugLog('Max radius - no intersect:', maxRadiusNoIntersect, 'screen width:', maxRadiusForScreenWidth, 'height:', maxRadiusForHeight);
+            debugLog('Final radius:', radius);
+
+            leftEye.style.width = diameter + 'px';
+            leftEye.style.height = diameter + 'px';
+            rightEye.style.width = diameter + 'px';
+            rightEye.style.height = diameter + 'px';
+
+            leftEye.style.top = '50%';
+            leftEye.style.left = 'calc(50% - ' + (ipdPx / 2) + 'px)';
+            leftEye.style.transform = 'translate(-50%, -50%)';
+
+            rightEye.style.top = '50%';
+            rightEye.style.left = 'calc(50% + ' + (ipdPx / 2) + 'px)';
+            rightEye.style.transform = 'translate(-50%, -50%)';
+
+            container.appendChild(leftEye);
+            container.appendChild(rightEye);
+        }
+    }
+
     function updateLayout() {
+        if (updateLayoutTimeout) {
+            clearTimeout(updateLayoutTimeout);
+            updateLayoutTimeout = null;
+        }
         restCall('get', '/api/stacker/status', null, function (statusData) {
-            var stream = (statusData && statusData.status !== 'idle') ? 'stacked' : 'live';
-
             restCall('get', '/api/config/ols_data', null, function (data) {
-                var config = (data && data.value) || {};
-                // Handle both boolean and string values for binoviewers
-                var binoviewers = config.stack_binoviewers === true || config.stack_binoviewers === 'true';
-                var ipd = parseFloat(config.stack_ipd) || 500;
-                // Read debug_log from ols_data config
-                debugEnabled = (config.debug_log === true || config.debug_log === 'true') || false;
-                debugLog('Binoviewers config:', config.stack_binoviewers, 'parsed:', binoviewers);
-
-                if (stream !== current_stream) {
-                    streamImage.src = '/api/video/' + stream;
-                }
-
-                if (binoviewers === current_binoviewers && ipd === current_ipd && stream === current_stream && debugEnabled === current_debug) {
-                    setTimeout(updateLayout, 2000);
-                    return;
-                }
-
-                current_binoviewers = binoviewers;
-                current_ipd = ipd;
-                current_stream = stream;
-                current_debug = debugEnabled;
-
-                var container = document.getElementById('container');
-                container.innerHTML = '';
-
-                if (!binoviewers) {
-                    debugLog('Creating single eye layout');
-                    var eye = createEye();
-                    var size = 'min(98vw, 98vh)';
-                    eye.style.width = size;
-                    eye.style.height = size;
-                    eye.style.top = '50%';
-                    eye.style.left = '50%';
-                    eye.style.transform = 'translate(-50%, -50%)';
-                    container.appendChild(eye);
-                } else {
-                    debugLog('Creating binoviewers layout with IPD (px):', ipd);
-                    var leftEye = createEye();
-                    var rightEye = createEye();
-
-                    // Calculate optimal eye size considering IPD (in pixels) and screen dimensions
-                    var screenWidth = window.innerWidth;
-                    var screenHeight = window.innerHeight;
-
-                    // IPD is now passed as pixels directly
-                    var ipdPx = ipd;
-
-                    // Constraint 1: Circles must not intersect
-                    // Distance between centers = ipdPx, so radius must be <= ipdPx/2
-                    var maxRadiusNoIntersect = ipdPx / 2;
-
-                    // Constraint 2: Circles must not overflow screen edges
-                    // Left circle: center at (screenWidth/2 - ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
-                    // Right circle: center at (screenWidth/2 + ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
-                    var maxRadiusForScreenWidth = (screenWidth / 2) - (ipdPx / 2);
-
-                    // Constraint 3: Height constraint
-                    var maxRadiusForHeight = screenHeight / 2;
-
-                    // Use the smallest constraint with 2% margin
-                    var radius = Math.min(maxRadiusNoIntersect, maxRadiusForScreenWidth, maxRadiusForHeight) * 0.98;
-                    var diameter = radius * 2;
-
-                    debugLog('Screen:', screenWidth, 'x', screenHeight, 'IPD px:', ipdPx);
-                    debugLog('Max radius - no intersect:', maxRadiusNoIntersect, 'screen width:', maxRadiusForScreenWidth, 'height:', maxRadiusForHeight);
-                    debugLog('Final radius:', radius);
-
-                    leftEye.style.width = diameter + 'px';
-                    leftEye.style.height = diameter + 'px';
-                    rightEye.style.width = diameter + 'px';
-                    rightEye.style.height = diameter + 'px';
-
-                    leftEye.style.top = '50%';
-                    leftEye.style.left = 'calc(50% - ' + (ipdPx / 2) + 'px)';
-                    leftEye.style.transform = 'translate(-50%, -50%)';
-
-                    rightEye.style.top = '50%';
-                    rightEye.style.left = 'calc(50% + ' + (ipdPx / 2) + 'px)';
-                    rightEye.style.transform = 'translate(-50%, -50%)';
-
-                    container.appendChild(leftEye);
-                    container.appendChild(rightEye);
-                }
-                setTimeout(updateLayout, 2000);
+                last_status_data = statusData;
+                last_config_data = data;
+                applyLayout();
+                updateLayoutTimeout = setTimeout(updateLayout, 2000);
             });
         });
     }
@@ -249,6 +267,10 @@
     window.onload = function () {
         updateLayout();
         requestAnimationFrame(render);
+    };
+
+    window.onresize = function () {
+        applyLayout();
     };
 </script>
 </body>
