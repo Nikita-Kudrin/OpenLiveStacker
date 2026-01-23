@@ -199,17 +199,14 @@
             var leftEye = createEye();
             var rightEye = createEye();
 
-            // Calculate optimal eye size considering IPD (in pixels) and screen dimensions
-            var ipdPx = ipd;
-
             // Constraint 1: Circles must not intersect
             // Distance between centers = ipdPx, so radius must be <= ipdPx/2
-            var maxRadiusNoIntersect = ipdPx / 2;
+            var maxRadiusNoIntersect = ipd / 2;
 
             // Constraint 2: Circles must not overflow screen edges
             // Left circle: center at (screenWidth/2 - ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
             // Right circle: center at (screenWidth/2 + ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
-            var maxRadiusForScreenWidth = (screenWidth / 2) - (ipdPx / 2);
+            var maxRadiusForScreenWidth = (screenWidth / 2) - (ipd / 2);
 
             // Constraint 3: Height constraint
             var maxRadiusForHeight = screenHeight / 2;
@@ -218,7 +215,7 @@
             var radius = Math.min(maxRadiusNoIntersect, maxRadiusForScreenWidth, maxRadiusForHeight) * 0.98;
             var diameter = radius * 2;
 
-            debugLog('Screen:', screenWidth, 'x', screenHeight, 'IPD px:', ipdPx);
+            debugLog('Screen:', screenWidth, 'x', screenHeight, 'IPD px:', ipd);
             debugLog('Max radius - no intersect:', maxRadiusNoIntersect, 'screen width:', maxRadiusForScreenWidth, 'height:', maxRadiusForHeight);
             debugLog('Final radius:', radius);
 
@@ -228,11 +225,11 @@
             rightEye.style.height = diameter + 'px';
 
             leftEye.style.top = '50%';
-            leftEye.style.left = 'calc(50% - ' + (ipdPx / 2) + 'px)';
+            leftEye.style.left = 'calc(50% - ' + (ipd / 2) + 'px)';
             leftEye.style.transform = 'translate(-50%, -50%)';
 
             rightEye.style.top = '50%';
-            rightEye.style.left = 'calc(50% + ' + (ipdPx / 2) + 'px)';
+            rightEye.style.left = 'calc(50% + ' + (ipd / 2) + 'px)';
             rightEye.style.transform = 'translate(-50%, -50%)';
 
             container.appendChild(leftEye);
