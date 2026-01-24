@@ -39,6 +39,7 @@
             height: 100%;
             display: block;
         }
+        button { border-radius:2mm; height:10mm; font-size:5mm ; text-align:center; vertical-align: middle; background-color:black; color:red; border: 2px solid red }
     </style>
 </head>
 <body>
@@ -96,6 +97,7 @@
 
     var current_binoviewers = null;
     var current_ipd = null;
+    var current_ipd_gap = null;
     var current_stream = null;
     var current_debug = null;
     var current_width = null;
@@ -141,10 +143,17 @@
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
     }
 
+
+    var updated_last = null;
     function render() {
-        var canvases = document.getElementsByClassName('eye-canvas');
-        for (var i = 0; i < canvases.length; i++) {
-            drawToCanvas(canvases[i], streamImage);
+        var curr_time = Date.now();
+        const delay_ms = -1;
+        if(updated_last == null || curr_time - updated_last > delay_ms) {
+            var canvases = document.getElementsByClassName('eye-canvas');
+            for (var i = 0; i < canvases.length; i++) {
+                drawToCanvas(canvases[i], streamImage);
+            }
+            updated_last = Date.now();
         }
         requestAnimationFrame(render);
     }
@@ -157,8 +166,15 @@
         var stream = (statusData && statusData.status !== 'idle') ? 'stacked' : 'live';
         var config = (data && data.value) || {};
         // Handle both boolean and string values for binoviewers
-        var binoviewers = config.stack_binoviewers === true || config.stack_binoviewers === 'true';
-        var ipd = parseFloat(config.stack_ipd) || 500;
+        var binoviewers = config.enable_binoviewers === true || config.enable_binoviewers === 'true';
+        var ipd_mm = parseFloat(config.ipd_mm) || 60;
+        var ipd_gap_mm = parseFloat(config.ipd_gap_mm) || 10;
+        var width_mm = parseFloat(config.screen_width_mm) || 140;
+        var screenWidth = window.innerWidth;
+        var screenHeight = window.innerHeight;
+        var ipd = ipd_mm / width_mm * screenWidth;
+        var ipd_gap = ipd_gap_mm / width_mm * screenWidth;
+
         // Read debug_log from ols_data config
         debugEnabled = (config.debug_log === true || config.debug_log === 'true') || false;
 
@@ -166,16 +182,15 @@
             streamImage.src = '/api/video/' + stream;
         }
 
-        var screenWidth = window.innerWidth;
-        var screenHeight = window.innerHeight;
 
-        if (binoviewers === current_binoviewers && ipd === current_ipd && stream === current_stream && debugEnabled === current_debug &&
+        if (binoviewers === current_binoviewers && ipd === current_ipd && ipd_gap == current_ipd_gap && stream === current_stream && debugEnabled === current_debug &&
             screenWidth === current_width && screenHeight === current_height) {
             return;
         }
 
         current_binoviewers = binoviewers;
         current_ipd = ipd;
+        current_ipd_gap = current_ipd;
         current_stream = stream;
         current_debug = debugEnabled;
         current_width = screenWidth;
@@ -201,7 +216,7 @@
 
             // Constraint 1: Circles must not intersect
             // Distance between centers = ipdPx, so radius must be <= ipdPx/2
-            var maxRadiusNoIntersect = ipd / 2;
+            var maxRadiusNoIntersect = ipd / 2  - ipd_gap / 2 ;
 
             // Constraint 2: Circles must not overflow screen edges
             // Left circle: center at (screenWidth/2 - ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
@@ -236,8 +251,23 @@
             container.appendChild(rightEye);
         }
     }
-
+    function isInIframe()
+    {
+        var url=window.location.href;
+        var queryPos = url.indexOf('?');
+        if(queryPos == -1)
+            return false;
+        var params = url.slice(queryPos + 1);
+        if(params == 'if')
+            return true;
+        return false;
+    }
     function updateLayout() {
+        if(isInIframe()) {
+            var b = document.getElementById('toggle_button');
+            if(b)
+                b.remove();
+        }
         if (updateLayoutTimeout) {
             clearTimeout(updateLayoutTimeout);
             updateLayoutTimeout = null;
@@ -269,6 +299,37 @@
     window.onresize = function () {
         applyLayout();
     };
+    var current_full_screen = false;
+    var wakeLock = null;
+
+    async function toggleSWL(swl) {
+      try {
+        if (swl) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        } else if (wakeLock) {
+          await wakeLock.release();
+          wakeLock = null;
+        }
+      } catch (err) {
+        console.error(`${err.name}, ${err.message}`);
+      }
+    }
+
+    function toggleFS()
+    {
+        current_full_screen = !current_full_screen;
+        if(current_full_screen) {
+            document.documentElement.requestFullscreen({navigationUI:'hide'});
+        }
+        else {
+            document.exitFullscreen();
+        }
+        toggleSWL(current_full_screen);
+    }
 </script>
+<span id="toggle_button" style="position:absolute; left:1mm; top:1mm; z-index:5;">
+    <button onclick="toggleFS();">FS</button>
+</span>
+
 </body>
 </html>

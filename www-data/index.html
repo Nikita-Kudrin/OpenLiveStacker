@@ -272,6 +272,7 @@
         <button onclick="selectConfig('calib');">Calib.</button>
         <button onclick="selectConfig('astap');">ASTAP</button>
         <button onclick="selectConfig('mount');">Mount</button>
+        <button onclick="selectConfig('bino');">Bino</button>
         <button onclick="selectConfig('focuser');" class="alpha_features" >Focuser</button>
     <p>
     <div id="config_tab_camera" class="config_tab" >
@@ -302,12 +303,6 @@
         </p>
         <p>
             <span id="extra_opt_toggle" class="nowr" ><label for="extra_opt_checked">Alpha Features</label><input class = "saved_input" id="extra_opt_checked" type="checkbox" onchange="enableAlphaFeatures(this.checked)" ></span>
-        </p>
-        <p>
-            <span class="nowr" ><label for="stack_binoviewers">Binoviewers</label><input class="saved_input" id="stack_binoviewers" type="checkbox" onchange="toggleBinoviewers(this.checked)" ></span>
-        </p>
-        <p id="ipd_row" style="display:none">
-            <span class="nowr" >Interpupillary Distance (px):<input class="saved_input val_input" id="stack_ipd" type="number" value="500"></span>
         </p>
         <p><button id="manual_geolocation" onclick="getBrowserGeolocation();">Get Geolocation</button></p>
         <p>
@@ -357,6 +352,36 @@
             <span id='download_status'></span>
         </p>
     </div>
+    <div id="config_tab_bino" class="config_tab" style="display:none">
+        <div>
+            <table>
+		        <tr>
+                    <td><button onclick="openVRLocally()">Open VR</button></td>
+                    <td>
+                        <a href="/eyepiece.html">Link</a>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Enable Bino</td>
+                    <td><input class="val_input saved_input" id="enable_binoviewers" type="checkbox" /></td>
+                </tr>
+                <tr>
+                    <td>Screen Width (mm)</td>
+                    <td><input class="val_input saved_input" id="screen_width_mm" type="number" value="140" /></td>
+                </tr>
+                <tr>
+                    <td>Pupillary Distance (mm)</td>
+                    <td><input class="val_input saved_input" id="ipd_mm" type="number" value="60" /></td>
+                </tr>
+                <tr>
+                    <td>Gap (mm)</td>
+                    <td><input class="val_input saved_input" id="ipd_gap_mm" type="number" value="10" /></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+
     <div id="config_tab_focuser" class="config_tab" style="display:none">
         <div id="focuser_driver_selection" style='display:none' >
             <p>Select Driver</p>

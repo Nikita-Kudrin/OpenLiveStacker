@@ -2870,7 +2870,7 @@ function selectStackConfig(cfg)
 
 function selectConfig(cfg)
 {
-    var cfgs = ['astap','general','camera','profiles','calib','mount','focuser'];
+    var cfgs = ['astap','general','camera','profiles','calib','mount','bino','focuser'];
     for(var i=0;i<cfgs.length;i++) {
         var obj = document.getElementById('config_tab_' + cfgs[i]);
         if(cfgs[i] == cfg) {
@@ -2912,6 +2912,39 @@ function focuserDriversUpdate(data)
             document.getElementById('focuser_driver_option').value = opt
         drivers_select.add(option);
     }
+}
+
+function openVRLocally()
+{
+        // 1. Create the iframe element
+    const iframe = document.createElement('iframe');
+
+    // 2. Set essential attributes
+    iframe.src = "/eyepiece.html?if";
+    iframe.style.border = "none"; // Optional styling
+    iframe.style.position = "absolute"; 
+    iframe.style.left = "0"; 
+    iframe.style.top = "0"; 
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.zIndex = "10";
+
+    const cb = document.createElement('button');
+    cb.innerHTML = "X"
+    cb.classList.add('incdec_but')
+    cb.style.position = "absolute"
+    cb.style.top="1mm";
+    cb.style.right="1mm";
+    cb.style.zIndex = "11"
+    cb.addEventListener('click',()=>{
+        iframe.remove();
+        cb.remove();
+    });
+
+    // 3. Append it to a specific container or the body
+    document.body.appendChild(iframe);
+    document.body.appendChild(cb);
+
 }
 
 function focuserDriverSelect()
