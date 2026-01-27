@@ -39,7 +39,17 @@
             height: 100%;
             display: block;
         }
-        button { border-radius:2mm; height:10mm; font-size:5mm ; text-align:center; vertical-align: middle; background-color:black; color:red; border: 2px solid red }
+
+        button {
+            border-radius: 2mm;
+            height: 10mm;
+            font-size: 5mm;
+            text-align: center;
+            vertical-align: middle;
+            background-color: black;
+            color: red;
+            border: 2px solid red
+        }
     </style>
 </head>
 <body>
@@ -102,12 +112,14 @@
     var current_debug = null;
     var current_width = null;
     var current_height = null;
+    var current_fps_limit = 1;
     var updateLayoutTimeout = null;
     var last_status_data = null;
     var last_config_data = null;
     var streamImage = new Image();
 
     function drawToCanvas(canvas, img) {
+        debugLog('drawToCanvas', canvas, img.src);
         if (!img.complete || img.naturalWidth === 0) return;
 
         var rect = canvas.getBoundingClientRect();
@@ -145,17 +157,25 @@
 
 
     var updated_last = null;
-    function render() {
-        var curr_time = Date.now();
-        const delay_ms = -1;
-        if(updated_last == null || curr_time - updated_last > delay_ms) {
-            var canvases = document.getElementsByClassName('eye-canvas');
-            for (var i = 0; i < canvases.length; i++) {
-                drawToCanvas(canvases[i], streamImage);
-            }
-            updated_last = Date.now();
+
+    function render(reason) {
+        debugLog('render', reason);
+        var canvases = document.getElementsByClassName('eye-canvas');
+        for (var i = 0; i < canvases.length; i++) {
+            drawToCanvas(canvases[i], streamImage);
         }
-        requestAnimationFrame(render);
+        updated_last = Date.now();
+    }
+
+    function animationLoop() {
+        var curr_time = Date.now();
+        var fps_limit = parseFloat(current_fps_limit) || 1;
+        var delay_ms = 1000 / fps_limit;
+        // Redraw at fps_limit as fallback for browsers not triggering onload on MJPEG
+        if (updated_last == null || curr_time - updated_last > delay_ms) {
+            render('loop');
+        }
+        requestAnimationFrame(animationLoop);
     }
 
     function applyLayout() {
@@ -170,6 +190,11 @@
         var ipd_mm = parseFloat(config.ipd_mm) || 60;
         var ipd_gap_mm = parseFloat(config.ipd_gap_mm) || 10;
         var width_mm = parseFloat(config.screen_width_mm) || 140;
+
+        var fps_limit = parseFloat(config.eyepiece_fps_limit) || 1;
+        if (fps_limit <= 0) fps_limit = 1;
+        if (fps_limit > 60) fps_limit = 60; // Cap at 60 FPS to prevent unnecessary power drain
+
         var screenWidth = window.innerWidth;
         var screenHeight = window.innerHeight;
         var ipd = ipd_mm / width_mm * screenWidth;
@@ -184,17 +209,18 @@
 
 
         if (binoviewers === current_binoviewers && ipd === current_ipd && ipd_gap == current_ipd_gap && stream === current_stream && debugEnabled === current_debug &&
-            screenWidth === current_width && screenHeight === current_height) {
+            screenWidth === current_width && screenHeight === current_height && fps_limit === current_fps_limit) {
             return;
         }
 
         current_binoviewers = binoviewers;
         current_ipd = ipd;
-        current_ipd_gap = current_ipd;
+        current_ipd_gap = ipd_gap;
         current_stream = stream;
         current_debug = debugEnabled;
         current_width = screenWidth;
         current_height = screenHeight;
+        current_fps_limit = fps_limit;
 
         var container = document.getElementById('container');
         container.innerHTML = '';
@@ -216,7 +242,7 @@
 
             // Constraint 1: Circles must not intersect
             // Distance between centers = ipdPx, so radius must be <= ipdPx/2
-            var maxRadiusNoIntersect = ipd / 2  - ipd_gap / 2 ;
+            var maxRadiusNoIntersect = ipd / 2 - ipd_gap / 2;
 
             // Constraint 2: Circles must not overflow screen edges
             // Left circle: center at (screenWidth/2 - ipdPx/2), must fit: radius <= screenWidth/2 - ipdPx/2
@@ -250,22 +276,24 @@
             container.appendChild(leftEye);
             container.appendChild(rightEye);
         }
+        render('layout_applied');
     }
-    function isInIframe()
-    {
-        var url=window.location.href;
+
+    function isInIframe() {
+        var url = window.location.href;
         var queryPos = url.indexOf('?');
-        if(queryPos == -1)
+        if (queryPos == -1)
             return false;
         var params = url.slice(queryPos + 1);
-        if(params == 'if')
+        if (params == 'if')
             return true;
         return false;
     }
+
     function updateLayout() {
-        if(isInIframe()) {
+        if (isInIframe()) {
             var b = document.getElementById('toggle_button');
-            if(b)
+            if (b)
                 b.remove();
         }
         if (updateLayoutTimeout) {
@@ -293,35 +321,40 @@
 
     window.onload = function () {
         updateLayout();
-        requestAnimationFrame(render);
+        streamImage.onload = function () {
+            render('new_frame');
+        };
+        animationLoop();
     };
 
+    var resizeTimeout = null;
     window.onresize = function () {
-        applyLayout();
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function () {
+            applyLayout();
+        }, 100);
     };
     var current_full_screen = false;
     var wakeLock = null;
 
     async function toggleSWL(swl) {
-      try {
-        if (swl) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        } else if (wakeLock) {
-          await wakeLock.release();
-          wakeLock = null;
+        try {
+            if (swl) {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } else if (wakeLock) {
+                await wakeLock.release();
+                wakeLock = null;
+            }
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
         }
-      } catch (err) {
-        console.error(`${err.name}, ${err.message}`);
-      }
     }
 
-    function toggleFS()
-    {
+    function toggleFS() {
         current_full_screen = !current_full_screen;
-        if(current_full_screen) {
-            document.documentElement.requestFullscreen({navigationUI:'hide'});
-        }
-        else {
+        if (current_full_screen) {
+            document.documentElement.requestFullscreen({navigationUI: 'hide'});
+        } else {
             document.exitFullscreen();
         }
         toggleSWL(current_full_screen);
