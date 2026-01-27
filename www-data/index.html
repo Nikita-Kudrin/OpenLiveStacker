@@ -15,7 +15,7 @@
 </div>
 <div id='video' ></div>
 <div id='thumb' style="display:none; position:absolute; right:0; top:0; z-index:-1;">
-    <span id="thumb_video"><span>
+    <span id="thumb_video"></span>
 </div>
 <div style="position:absolute; right:5mm; bottom:0; text-align:right;">
     <span class="mount_connected_display_inline" style="display:none;" >
@@ -76,7 +76,7 @@
 <p>
     <table>
     <tr>
-        <td><button id="mount_manual_sync" style='display:none' class="mount_sync mount_sq_but solve_background" >&nbsp;</button><button class="mount_no_sync mount_sq_but no_sync_background" >&nbsp;</button</td>
+        <td><button id="mount_manual_sync" style='display:none' class="mount_sync mount_sq_but solve_background" >&nbsp;</button><button class="mount_no_sync mount_sq_but no_sync_background" >&nbsp;</button></td>
         <td><button class="mount_sq_but N_background" id="slew_N" >&nbsp;</button></td>
         <td><button class="mount_sq_but" onclick='showMount(false);' >X</button></td>
     <tr>
@@ -113,7 +113,7 @@
         <button onclick="selectStackConfig('main');">Main</button>
         <button onclick="selectStackConfig('filters');">Filters</button>
         <button onclick="selectStackConfig('saving');">Saving</button>
-        <button id="dithering_button" onclick="selectStackConfig('dithering');" style='display:none' ">Dithering</button>
+        <button id="dithering_button" onclick="selectStackConfig('dithering');" style='display:none'>Dithering</button>
     <p>
     <div id="stack_tab_main" class="config_tab" >
     <table>
@@ -229,6 +229,7 @@
     <p>
         <b>Deconvolution:</b>
     </p>
+    <p>
         <span class="range_title" >Sigma:</span><input class="saved_input range_inp" type="range" id="stack_deconv_sigma" min="0" max="5.0" step="0.1" value="3.0" oninput="updateShrapCtl('deconv_sigma',1,this.value)" ><output id="out_deconv_sigma">3.0</output>
     </p>
     <p>
@@ -237,8 +238,10 @@
     <p>
         <b>Unsharp Mask:</b>
     </p>
+    <p>
         <span class="range_title" >Sigma:</span><input class="saved_input range_inp" type="range" id="stack_unsharp_sigma" min="0" max="5.0" value="3.0" step="0.1" oninput="updateShrapCtl('unsharp_sigma',1,this.value)" ><output id="out_unsharp_sigma">3.0</output>
     </p>
+    <p>
     <p>
         <span class="range_title" >Strength:</span><input class="saved_input range_inp" type="range" id="stack_unsharp_strenght" min="0.1" max="5.0" value="1.5" step="0.1" oninput="updateShrapCtl('unsharp_strength',1,this.value)" ><output id="out_unsharp_strength">1.5</output>
     </p>
@@ -376,6 +379,10 @@
                 <tr>
                     <td>Gap (mm)</td>
                     <td><input class="val_input saved_input" id="ipd_gap_mm" type="number" value="10" /></td>
+                </tr>
+                <tr>
+                    <td>FPS limit</td>
+                    <td><input class="val_input saved_input" id="eyepiece_fps_limit" type="number" min="1" max="60" value="1" /></td>
                 </tr>
             </table>
         </div>
