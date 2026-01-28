@@ -11,6 +11,7 @@ Open-Source:
 - CppCMS and Booster: https://github.com/artyom-beilis/cppcms/blob/master/COPYING.TXT - MIT and Boost
 - ASTAP: https://www.hnsky.org/astap.htm - CC-By-v4
 - Processed OpenNGC Database: https://github.com/mattiaverga/OpenNGC/blob/master/LICENSE - CC-BT-SA-4
+- MiDaS Depth Estimation Model: https://github.com/isl-org/MiDaS - MIT License
 
 
 Proprietary

@@ -11,8 +11,10 @@
 #include <iomanip>
 #include <chrono>
 #include "util.h"
-
+#include "midas_processor.h"
 #include "simd_utils.h"
+#include <opencv2/dnn.hpp>
+#include <opencv2/imgproc.hpp>
 
 namespace ols {
     class PostProcessorProcessor {
@@ -106,6 +108,15 @@ namespace ols {
             save_stretch(data.second);
             cv::Mat img8;
             img.convertTo(img8,CV_8UC3,255);
+
+            if(stack_info_.enable_midas_3d && midas_) {
+                try {
+                    img8 = midas_->create_sbs_stereo(img8);
+                } catch(std::exception const &e) {
+                    BOOSTER_ERROR("stacker") << "MiDaS processing failed: " << e.what();
+                }
+            }
+
             std::shared_ptr<CameraFrame> frame(new CameraFrame());
             std::shared_ptr<CameraFrame> plate_solving_frame;
             frame->format.width = img8.cols;
@@ -317,6 +328,19 @@ namespace ols {
                 name_ = ctl->name;
                 dropped_count_ = 0;
                 stack_info_ = *ctl;
+                if(stack_info_.enable_midas_3d) {
+                    if(!midas_) {
+                        std::string model_path = data_dir_ + "/midas.onnx";
+                        try {
+                            midas_.reset(new MiDaS(model_path));
+                        } catch(std::exception const &e) {
+                            BOOSTER_ERROR("stacker") << "Failed to load MiDaS model: " << e.what();
+                            send_message(stats_,"MiDaS",std::string("Failed to load model from ") + model_path + " : " + e.what());
+                        }
+                    }
+                } else {
+                    midas_.reset();
+                }
                 last_frame_ = nullptr;
                 switch(ctl->method) {
                 case stack_planetary:
@@ -358,6 +382,26 @@ namespace ols {
                 break;
             case StackerControl::ctl_update:
                 if(!calibration_) {
+                    stack_info_.auto_stretch = ctl->auto_stretch;
+                    stack_info_.stretch_low = ctl->stretch_low;
+                    stack_info_.stretch_high = ctl->stretch_high;
+                    stack_info_.stretch_gamma = ctl->stretch_gamma;
+                    stack_info_.enable_midas_3d = ctl->enable_midas_3d;
+
+                    if(stack_info_.enable_midas_3d) {
+                        if(!midas_) {
+                            std::string model_path = data_dir_ + "/midas.onnx";
+                            try {
+                                midas_.reset(new MiDaS(model_path));
+                            } catch(std::exception const &e) {
+                                BOOSTER_ERROR("stacker") << "Failed to load MiDaS model: " << e.what();
+                                send_message(stats_,"MiDaS",std::string("Failed to load model from ") + model_path + " : " + e.what());
+                            }
+                        }
+                    } else {
+                        midas_.reset();
+                    }
+
                     pp_->set_stretch(ctl->auto_stretch,ctl->stretch_low,ctl->stretch_high,ctl->stretch_gamma);
                     pp_->set_deconv(ctl->deconv_sig,ctl->deconv_iters);
                     pp_->set_unsharp_mask(ctl->unsharp_sig,ctl->unsharp_strength);
@@ -399,6 +443,7 @@ namespace ols {
         std::shared_ptr<StackedFrame> last_frame_;
         int saved_count_ = 0;
         StackerControl stack_info_;
+        std::unique_ptr<MiDaS> midas_;
     };
 
     std::thread start_post_processor(queue_pointer_type in,queue_pointer_type out,queue_pointer_type stats,queue_pointer_type plate_solving,std::string data_dir)

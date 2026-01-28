@@ -104,6 +104,7 @@ namespace ols {
             std::shared_ptr<StackerControl> cmd(new StackerControl());
             cmd->op = StackerControl::ctl_update;
             cmd->auto_stretch = content_.get("auto_stretch",cmd->auto_stretch);
+            cmd->enable_midas_3d = content_.get("enable_midas_3d",cmd->enable_midas_3d);
             cmd->stretch_low = content_.get("stretch_low",cmd->stretch_low);
             cmd->stretch_high = content_.get("stretch_high",cmd->stretch_high);
             cmd->stretch_gamma = content_.get("stretch_gamma",cmd->stretch_gamma);
@@ -179,6 +180,7 @@ namespace ols {
             cmd->flats_path = content_.get("flats",cmd->flats_path);
             cmd->dark_flats_path = content_.get("dark_flats",cmd->dark_flats_path);
             cmd->auto_stretch = content_.get("auto_stretch",cmd->auto_stretch);
+            cmd->enable_midas_3d = content_.get("enable_midas_3d",cmd->enable_midas_3d);
             cmd->stretch_low = content_.get("stretch_low",cmd->stretch_low);
             cmd->stretch_high = content_.get("stretch_high",cmd->stretch_high);
             cmd->stretch_gamma = content_.get("stretch_gamma",cmd->stretch_gamma);

@@ -1666,6 +1666,7 @@ function updatePP()
 
     var config={
         auto_stretch:       getBVal("auto_stretch"),
+        enable_midas_3d:    getBVal("enable_midas_3d"),
         stretch_low:        g_stretch.cut,
         stretch_high:       g_stretch.gain,
         stretch_gamma:      g_stretch.gamma
@@ -1847,7 +1848,8 @@ function startStack()
         filters : filters,
         darks : darks,
         flats : flats,
-        dark_flats : dark_flats
+        dark_flats : dark_flats,
+        enable_midas_3d : getBVal("enable_midas_3d")
     };
 
     configSharpenning(config);

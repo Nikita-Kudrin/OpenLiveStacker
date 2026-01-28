@@ -40,6 +40,20 @@ It runs on Android, Linux and Windows...
     - Gradient removal, satellite removal, hot pixel correction
     - Calibration frames: darks, flats, dark-flats
 
+## 3D Illusion Feature (MiDaS)
+
+OpenLiveStacker supports a 3D illusion feature for stacked images using the MiDaS depth estimation model.
+
+To use this feature:
+1. Download a MiDaS ONNX model (e.g., `model-small.onnx`).
+2. Rename it to `midas.onnx`.
+3. Place it in the `data/` directory of the application (as specified in `config.json`).
+
+**Model Source and Downloads:**
+- Source Repository: [isl-org/MiDaS](https://github.com/isl-org/MiDaS)
+- Recommended Model (Small/Fast): [model-small.onnx](https://github.com/isl-org/MiDaS/releases/download/v2_1/model-small.onnx)
+- For new versions or different models, check the [MiDaS Releases page](https://github.com/isl-org/MiDaS/releases).
+
 ## Using on Android
 
 Install from [Google Play](https://play.google.com/store/apps/details?id=org.openlivestacker&hl=en) or APK file directly from release page
@@ -68,7 +82,7 @@ For Windows x64 download zip file, unzip it and run ols_gui, you may need to ins
 
 - libtiff
 - cppcms 2.0 beta
-- OpenCV >= 3.2 core, imgproc, imgcodecs
+- OpenCV >= 3.2 core, imgproc, imgcodecs, dnn
 - C++11 enabled compiler
 - Per camera requirement:
     - ASI ZWO SDK for ASI support

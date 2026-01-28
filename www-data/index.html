@@ -48,12 +48,12 @@
 <button style="display:none; float:right" id="stacking_ui_live" class="comp_but" onclick="toggleThumbLive();">L</button>
 
 <div id="focuser_controls" style="display:none; z-index:1;">
-<p>
+<div>
     <table>
     <tr>
         <td><button class="mount_sq_but focuser_move" onclick="focuserMove(-1,'s');">←</button></td>
         <td><button class="mount_sq_but focuser_move" onclick="focuserMove( 1,'s');">→</button></td>
-        <td><button class="mount_sq_but focuser_move" onclick="focuserMove(0,'')" >Go</button>
+        <td><button class="mount_sq_but focuser_move" onclick="focuserMove(0,'')" >Go</button></td>
         <td><button class="mount_sq_but" onclick="showFocuserControls(false);" >X</button></td>
     </tr>
     <tr>
@@ -67,18 +67,18 @@
         <td colspan="2"><button class="focuser_rect_but" onclick="focuserAbort()">Abort</button></td>
     </tr>
     </table>
-</p>
+</div>
 </div>
 
 
-
 <div id="mount_controls" style="display:none; z-index:1;">
-<p>
+<div>
     <table>
     <tr>
         <td><button id="mount_manual_sync" style='display:none' class="mount_sync mount_sq_but solve_background" >&nbsp;</button><button class="mount_no_sync mount_sq_but no_sync_background" >&nbsp;</button></td>
         <td><button class="mount_sq_but N_background" id="slew_N" >&nbsp;</button></td>
         <td><button class="mount_sq_but" onclick='showMount(false);' >X</button></td>
+    </tr>
     <tr>
         <td><button class="mount_sq_but W_background" id="slew_W" >&nbsp;</button></td>
         <td><button class="mount_sq_but" id="mount_slew_speed" onclick='slew("",null)' >5</button></td>
@@ -97,7 +97,7 @@
         <td colspan="2"><input oninput="updateMountRADE(this.value)" class="mount_input" id="mount_object" type="text"></input></td>
     </tr>
     </table>
-</p>
+</div>
 </div>
 <p id="short_message"></p>
 <div id='zoom_controls' style="display:none; position: absolute; bottom: 1mm; left: 1mm">
@@ -114,7 +114,7 @@
         <button onclick="selectStackConfig('filters');">Filters</button>
         <button onclick="selectStackConfig('saving');">Saving</button>
         <button id="dithering_button" onclick="selectStackConfig('dithering');" style='display:none'>Dithering</button>
-    <p>
+    </p>
     <div id="stack_tab_main" class="config_tab" >
     <table>
     <tr class="stack_opt dso_config calib_config plan_config dynamic_config" >
@@ -367,6 +367,10 @@
                 <tr>
                     <td>Enable Bino</td>
                     <td><input class="val_input saved_input" id="enable_binoviewers" type="checkbox" /></td>
+                </tr>
+                <tr>
+                    <td>3D MiDaS</td>
+                    <td><input class="val_input saved_input" id="stack_enable_midas_3d" onchange="updatePP()" type="checkbox" /></td>
                 </tr>
                 <tr>
                     <td>Screen Width (mm)</td>
