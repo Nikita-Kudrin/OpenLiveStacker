@@ -97,6 +97,7 @@ namespace ols {
             cmd->deconv_iters = content_.get("deconv_iters",cmd->deconv_iters);
             cmd->unsharp_sig = content_.get("unsharp_sig",cmd->unsharp_sig);
             cmd->unsharp_strength = content_.get("unsharp_strength",cmd->unsharp_strength);
+            cmd->enable_3d_gauss = content_.get("enable_3d_gauss",cmd->enable_3d_gauss);
             queue_->push(cmd);
         }
         void stretch()
@@ -168,6 +169,7 @@ namespace ols {
             cmd->deconv_iters = content_.get("deconv_iters",cmd->deconv_iters);
             cmd->unsharp_sig = content_.get("unsharp_sig",cmd->unsharp_sig);
             cmd->unsharp_strength = content_.get("unsharp_strength",cmd->unsharp_strength);
+            cmd->enable_3d_gauss = content_.get("enable_3d_gauss",cmd->enable_3d_gauss);
             
             cmd->synthetic_exposure_mpl = content_.get("synthetic_exposure_mpl",cmd->synthetic_exposure_mpl);
             cmd->remove_gradient = content_.get("remove_gradient",cmd->remove_gradient);

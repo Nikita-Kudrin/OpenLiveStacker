@@ -14,6 +14,7 @@
 namespace ols {
     class PostProcessorBase {
     public:
+        bool enable_3d_gauss_ = false;
         
         virtual void set_stretch(bool /*auto_stretch*/,float /*low_index*/,float /*high_index*/,float /*stretch_index*/) 
         {
@@ -23,6 +24,10 @@ namespace ols {
         }
         virtual void set_unsharp_mask(float /*sigma*/,float /*strength*/)
         {
+        }
+        virtual void set_3d_gauss(bool enable)
+        {
+            enable_3d_gauss_ = enable;
         }
         virtual std::vector<int> get_histogramm() {
             return std::vector<int>();
@@ -183,6 +188,12 @@ namespace ols {
             auto p3 = std::chrono::high_resolution_clock::now();
             if(unsharp_size_ > 1 && unsharp_strength_ > 0.0f) {
                 apply_unsharp(img);
+            }
+            if (enable_3d_gauss_) {
+                cv::Mat blurred1, blurred2;
+                cv::GaussianBlur(img, blurred1, cv::Size(0, 0), 1.5);
+                cv::GaussianBlur(img, blurred2, cv::Size(0, 0), 3.0);
+                img = blurred1 * 1.5 - blurred2 * 0.5;
             }
             auto p4 = std::chrono::high_resolution_clock::now();
             BOOSTER_INFO("stacker") << "Planetary post processing wb/stretch:" << tdiff(p1,p2) <<" ms, deconvolution " << tdiff(p2,p3) << "ms (blur " << deconv_g << " ms) , unsharp " << tdiff(p3,p4) <<" ms";
@@ -447,6 +458,13 @@ namespace ols {
                 offset_scale_and_clip_gamma(tmp,goffset,gscale,gamma_correction);
             }
             tp apply_stretch =  std::chrono::high_resolution_clock::now();
+
+            if (enable_3d_gauss_) {
+                cv::Mat blurred1, blurred2;
+                cv::GaussianBlur(tmp, blurred1, cv::Size(0, 0), 1.5);
+                cv::GaussianBlur(tmp, blurred2, cv::Size(0, 0), 3.0);
+                tmp = blurred1 * 1.5 - blurred2 * 0.5;
+            }
 
             BOOSTER_INFO("stacker") << "apply wb=" << tdiff(start,wb_apply) << "ms calc stretch" << tdiff(wb_apply,calc_stretch) 
                 << "ms stretch="<<tdiff(calc_stretch,apply_stretch) << "ms";

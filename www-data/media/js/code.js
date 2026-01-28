@@ -1621,6 +1621,7 @@ function configSharpenning(config)
     config.deconv_iters = parseInt(getVal("deconv_iters"));
     config.unsharp_sig = parseFloat(getVal("unsharp_sigma"));
     config.unsharp_strength = parseFloat(getVal("unsharp_strenght"));
+    config.enable_3d_gauss = getBVal("enable_3d_gauss");
 }
 
 function updateSharpen()

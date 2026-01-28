@@ -154,6 +154,7 @@ namespace ols {
         std::map<CamOptionId,double> camera_config;
         
         bool auto_stretch = true; /// stretch parameters
+        bool enable_3d_gauss = false;
         double stretch_low=0.5,stretch_high=0.5,stretch_gamma=0.5;
     };
 }
