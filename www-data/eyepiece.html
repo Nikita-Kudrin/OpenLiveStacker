@@ -113,13 +113,14 @@
     var current_width = null;
     var current_height = null;
     var current_fps_limit = 1;
+    var current_depthanything_3d = false;
     var updateLayoutTimeout = null;
     var last_status_data = null;
     var last_config_data = null;
     var streamImage = new Image();
 
-    function drawToCanvas(canvas, img) {
-        debugLog('drawToCanvas', canvas, img.src);
+    function drawToCanvas(canvas, img, eyeIndex) {
+        debugLog('drawToCanvas', canvas, img.src, eyeIndex);
         if (!img.complete || img.naturalWidth === 0) return;
 
         var rect = canvas.getBoundingClientRect();
@@ -135,6 +136,14 @@
         var ctx = canvas.getContext('2d');
         var iw = img.naturalWidth;
         var ih = img.naturalHeight;
+
+        var sx_offset = 0;
+        if (current_depthanything_3d) {
+            iw = iw / 2;
+            if (eyeIndex === 1) {
+                sx_offset = iw;
+            }
+        }
 
         var iRatio = iw / ih;
         var cRatio = cw / ch;
@@ -152,7 +161,7 @@
             sy = (ih - sh) / 2;
         }
 
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+        ctx.drawImage(img, sx + sx_offset, sy, sw, sh, 0, 0, cw, ch);
     }
 
 
@@ -162,7 +171,7 @@
         debugLog('render', reason);
         var canvases = document.getElementsByClassName('eye-canvas');
         for (var i = 0; i < canvases.length; i++) {
-            drawToCanvas(canvases[i], streamImage);
+            drawToCanvas(canvases[i], streamImage, i);
         }
         updated_last = Date.now();
     }
@@ -187,6 +196,11 @@
         var config = (data && data.value) || {};
         // Handle both boolean and string values for binoviewers
         var binoviewers = config.enable_binoviewers === true || config.enable_binoviewers === 'true';
+        var depthanything_3d = config.enable_depthanything_3d === true || config.enable_depthanything_3d === 'true';
+
+        if (depthanything_3d) {
+            stream = '3d';
+        }
         var ipd_mm = parseFloat(config.ipd_mm) || 60;
         var ipd_gap_mm = parseFloat(config.ipd_gap_mm) || 10;
         var width_mm = parseFloat(config.screen_width_mm) || 140;
@@ -209,7 +223,7 @@
 
 
         if (binoviewers === current_binoviewers && ipd === current_ipd && ipd_gap == current_ipd_gap && stream === current_stream && debugEnabled === current_debug &&
-            screenWidth === current_width && screenHeight === current_height && fps_limit === current_fps_limit) {
+            screenWidth === current_width && screenHeight === current_height && fps_limit === current_fps_limit && depthanything_3d === current_depthanything_3d) {
             return;
         }
 
@@ -221,6 +235,7 @@
         current_width = screenWidth;
         current_height = screenHeight;
         current_fps_limit = fps_limit;
+        current_depthanything_3d = depthanything_3d;
 
         var container = document.getElementById('container');
         container.innerHTML = '';

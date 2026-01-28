@@ -14,12 +14,15 @@
 
 #include "simd_utils.h"
 
+#include "depth_anything_v3.h"
+
 namespace ols {
     class PostProcessorProcessor {
     public:
-        PostProcessorProcessor(queue_pointer_type in,queue_pointer_type out,queue_pointer_type stats,queue_pointer_type plate_solving,std::string data_dir) :
+        PostProcessorProcessor(queue_pointer_type in,queue_pointer_type out,queue_pointer_type threed_out,queue_pointer_type stats,queue_pointer_type plate_solving,std::string data_dir) :
             in_(in),
             out_(out),
+            threed_out_(threed_out),
             stats_(stats),
             plate_solving_(plate_solving),
             data_dir_(data_dir),
@@ -45,6 +48,38 @@ namespace ols {
                     if(res) {
                         if(out_)
                             out_->push(res);
+                        
+                        if(threed_out_ && stack_info_.enable_depthanything_3d) {
+                            if (!depth_anything_.is_loaded()) {
+                                depth_anything_.load(data_dir_ + "/depth_anything_v3.onnx");
+                            }
+                            if (!depth_anything_.is_loaded()) {
+                                static auto last_warn = std::chrono::steady_clock::now();
+                                auto now = std::chrono::steady_clock::now();
+                                if (std::chrono::duration_cast<std::chrono::seconds>(now - last_warn).count() > 60) {
+                                    BOOSTER_WARNING("stacker") << "3D DepthAnything enabled but model is not loaded. Check logs for loading errors.";
+                                    last_warn = now;
+                                }
+                            } else {
+                                cv::Mat img = res->frame.empty() ? res->raw : res->frame;
+                                if (img.empty() && res->jpeg_frame) {
+                                    img = cv::imdecode(cv::Mat(1, res->jpeg_frame->size(), CV_8UC1, res->jpeg_frame->data()), cv::IMREAD_COLOR);
+                                }
+                                if (!img.empty()) {
+                                    cv::Mat depth = depth_anything_.estimate_depth(img);
+                                    if (!depth.empty()) {
+                                        cv::Mat sbs = depth_anything_.create_sbs_stereo(img, depth);
+                                        std::shared_ptr<CameraFrame> threed_frame(new CameraFrame());
+                                        threed_frame->format.width = sbs.cols;
+                                        threed_frame->format.height = sbs.rows;
+                                        std::vector<unsigned char> buf;
+                                        cv::imencode(".jpeg", sbs, buf);
+                                        threed_frame->jpeg_frame = std::shared_ptr<VideoFrame>(new VideoFrame(buf.data(), buf.size()));
+                                        threed_out_->push(threed_frame);
+                                    }
+                                }
+                            }
+                        }
                     }
                     if(ps && plate_solving_) {
                         plate_solving_->push(ps);
@@ -383,7 +418,7 @@ namespace ols {
             }
         }
     private:
-        queue_pointer_type in_,out_,stats_,plate_solving_;
+        queue_pointer_type in_,out_,threed_out_,stats_,plate_solving_;
         std::string data_dir_;
         int width_,height_;
         bool mono_;
@@ -399,11 +434,12 @@ namespace ols {
         std::shared_ptr<StackedFrame> last_frame_;
         int saved_count_ = 0;
         StackerControl stack_info_;
+        DepthAnythingV3 depth_anything_;
     };
 
-    std::thread start_post_processor(queue_pointer_type in,queue_pointer_type out,queue_pointer_type stats,queue_pointer_type plate_solving,std::string data_dir)
+    std::thread start_post_processor(queue_pointer_type in,queue_pointer_type out,queue_pointer_type threed_out,queue_pointer_type stats,queue_pointer_type plate_solving,std::string data_dir)
     {
-        std::shared_ptr<PostProcessorProcessor> p(new PostProcessorProcessor(in,out,stats,plate_solving,data_dir));
+        std::shared_ptr<PostProcessorProcessor> p(new PostProcessorProcessor(in,out,threed_out,stats,plate_solving,data_dir));
         return std::thread([=]() { p->run(); });
     }
  

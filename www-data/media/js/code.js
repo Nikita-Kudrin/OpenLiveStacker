@@ -1503,17 +1503,23 @@ function showConfig(v)
 
 function getVal(name)
 {
-    return document.getElementById('stack_' + name).value;
+    var el = document.getElementById('stack_' + name);
+    if(!el) return "";
+    return el.value;
 }
 
 function getBVal(name)
 {
-    return document.getElementById('stack_' + name).checked;
+    var el = document.getElementById('stack_' + name);
+    if(!el) return false;
+    return el.checked;
 }
 
 function getPVal(name)
 {
-    return document.getElementById('stack_' + name).value * 0.001;
+    var el = document.getElementById('stack_' + name);
+    if(!el) return 0;
+    return el.value * 0.001;
 }
 
 function getStartDelay()
@@ -1620,7 +1626,7 @@ function configSharpenning(config)
     config.deconv_sig = parseFloat(getVal("deconv_sigma")); 
     config.deconv_iters = parseInt(getVal("deconv_iters"));
     config.unsharp_sig = parseFloat(getVal("unsharp_sigma"));
-    config.unsharp_strength = parseFloat(getVal("unsharp_strenght"));
+    config.unsharp_strength = parseFloat(getVal("unsharp_strength"));
 }
 
 function updateSharpen()
@@ -1653,6 +1659,7 @@ function updateSharpenCheck()
     var now = new Date().getTime();
     var reminder = now - g_sharpen_sent;
     if(reminder >= 2000) {
+        var config = {};
         configSharpenning(config);
         console.log("Sending sharpen config " + JSON.stringify(config));
         restCall('post','/api/stacker/sharpen',config,(e)=>{});
@@ -1668,7 +1675,8 @@ function updatePP()
         auto_stretch:       getBVal("auto_stretch"),
         stretch_low:        g_stretch.cut,
         stretch_high:       g_stretch.gain,
-        stretch_gamma:      g_stretch.gamma
+        stretch_gamma:      g_stretch.gamma,
+        enable_depthanything_3d: getBVal("enable_depthanything_3d")
     };
     restCall('post','/api/stacker/stretch',config,(e)=>{
     });
@@ -1827,6 +1835,7 @@ function startStack()
         auto_stretch:       getBVal("auto_stretch"),
         save_tiff:          getBVal("save_tiff"),
         save_after:         save_after,
+        enable_depthanything_3d : getBVal("enable_depthanything_3d"),
         stretch_low:        g_stretch.cut,
         stretch_high:       g_stretch.gain,
         stretch_gamma:      g_stretch.gamma,

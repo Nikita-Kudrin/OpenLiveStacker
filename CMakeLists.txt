@@ -138,23 +138,42 @@ if(OPENCV_ROOT)
     find_library(OPENCV_CORE        opencv_core      PATHS ${OPENCV_ROOT}/lib/ NO_DEFAULT_PATH)
     find_library(OPENCV_IMGPROC     opencv_imgproc   PATHS ${OPENCV_ROOT}/lib/ NO_DEFAULT_PATH)
     find_library(OPENCV_IMGCODECS   opencv_imgcodecs PATHS ${OPENCV_ROOT}/lib/ NO_DEFAULT_PATH)
+    find_library(OPENCV_DNN         opencv_dnn       PATHS ${OPENCV_ROOT}/lib/ NO_DEFAULT_PATH)
     find_path(OPENCV_INC opencv2/core.hpp PATHS ${OPENCV_ROOT}/include/opencv4;${OPENCV_ROOT}/include NO_DEFAULT_PATH )
 else()
-    find_library(OPENCV_CORE        opencv_core      )
-    find_library(OPENCV_IMGPROC     opencv_imgproc   )
-    find_library(OPENCV_IMGCODECS   opencv_imgcodecs )
-    find_path(OPENCV_INC_A opencv2/core.hpp)
-    if(NOT OPENCV_INC_A)
-        find_path(OPENCV_INC_B opencv4/opencv2/core.hpp)
-        if(OPENCV_INC_B)
-            set(OPENCV_INC "${OPENCV_INC_B}/opencv4")
-        else()
-            message("Can't find OpenCV include")
-        endif()
+    find_package(OpenCV 4.5.5 QUIET COMPONENTS core imgproc imgcodecs dnn)
+    if(OpenCV_FOUND)
+        message("- Found OpenCV ${OpenCV_VERSION}")
+        set(OPENCV_INC ${OpenCV_INCLUDE_DIRS})
+        set(OPENCV_CORE ${OpenCV_LIBS})
+        set(OPENCV_IMGPROC "")
+        set(OPENCV_IMGCODECS "")
+        set(OPENCV_DNN "")
     else()
-        set(OPENCV_INC "${OPENCV_INC_A}")
+        find_library(OPENCV_CORE        opencv_core      )
+        find_library(OPENCV_IMGPROC     opencv_imgproc   )
+        find_library(OPENCV_IMGCODECS   opencv_imgcodecs )
+        find_library(OPENCV_DNN         opencv_dnn       )
+        find_path(OPENCV_INC_A opencv2/core.hpp)
+        if(NOT OPENCV_INC_A)
+            find_path(OPENCV_INC_B opencv4/opencv2/core.hpp)
+            if(OPENCV_INC_B)
+                set(OPENCV_INC "${OPENCV_INC_B}/opencv4")
+            else()
+                message("Can't find OpenCV include")
+            endif()
+        else()
+            set(OPENCV_INC "${OPENCV_INC_A}")
+        endif()
+        if(OPENCV_CORE)
+            # Try to get version if possible, but find_library doesn't provide it easily.
+            message("- Found OpenCV via find_library")
+        endif()
     endif()
+endif()
 
+if(OpenCV_VERSION AND OpenCV_VERSION VERSION_LESS "4.5.5")
+    message(WARNING "OpenCV version ${OpenCV_VERSION} is detected. 3D DepthAnything feature requires at least 4.5.5 for ONNX models with external weights (.onnx_data).")
 endif()
 
 message("- OpenCV Include Path ${OPENCV_INC}")
@@ -264,6 +283,7 @@ add_library(ols SHARED
     src/plate_solver.cpp
     src/server_sent_events.cpp
     src/downloader.cpp
+    src/depth_anything_v3.cpp
     src/allocator.cpp
     src/alpaca_client.cpp
     src/alpaca_mount.cpp
@@ -273,7 +293,7 @@ add_library(ols SHARED
     ${OLS_EXTRA}
     )
 
-target_link_libraries(ols ${LIBTIFF} ${LIBCPPCMS} ${LIBZ} ${LIBBOOSTER} ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS} ${OLS_LIB_EXTRA})
+target_link_libraries(ols ${LIBTIFF} ${LIBCPPCMS} ${LIBZ} ${LIBBOOSTER} ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS} ${OPENCV_DNN} ${OLS_LIB_EXTRA})
 if(NOT WIN32)
     target_link_libraries(ols dl)
 else()

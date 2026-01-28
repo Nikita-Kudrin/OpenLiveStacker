@@ -185,9 +185,11 @@ void OpenLiveStacker::init(std::string driver_name,int external_option)
     
     video_generator_app_ = new VideoGeneratorApp(*web_service_,"Real time video");
     stacked_video_generator_app_ = new VideoGeneratorApp(*web_service_,"Stacked video");
+    threed_video_generator_app_ = new VideoGeneratorApp(*web_service_,"3D video");
     stats_stream_app_ = new StackerStatsNotification(*web_service_);
     web_service_->applications_pool().mount(video_generator_app_,cppcms::mount_point("/video/live",0));
     web_service_->applications_pool().mount(stacked_video_generator_app_,cppcms::mount_point("/video/stacked",0));
+    web_service_->applications_pool().mount(threed_video_generator_app_,cppcms::mount_point("/video/3d",0));
     web_service_->applications_pool().mount(cppcms::create_pool<ConfigApp>(data_dir_),cppcms::mount_point("/config((/.*)?)",1));
     web_service_->applications_pool().mount(cppcms::create_pool<CameraControlApp>(this,video_generator_queue_),cppcms::mount_point("/camera((/.*)?)",1));
     web_service_->applications_pool().mount(cppcms::create_pool<MountControlApp>(stacker_stats_queue_,this),cppcms::mount_point("/mount((/.*)?)",1));
@@ -295,6 +297,7 @@ void OpenLiveStacker::run()
 {
     video_display_queue_->call_on_push(video_generator_app_->get_callback());
     stack_display_queue_->call_on_push(stacked_video_generator_app_->get_callback());
+    threed_display_queue_->call_on_push(threed_video_generator_app_->get_callback());
     stacker_stats_queue_->call_on_push(stats_stream_app_->get_callback());
     plate_solving_queue_->call_on_push(set_plate_solving_image);
     guide_queue_->call_on_push([=](data_pointer_type p) { this->guide(p); });
@@ -312,6 +315,7 @@ void OpenLiveStacker::run()
     stacker_thread_ = start_stacker(stacker_queue_,pp_queue_);
     pp_thread_ = start_post_processor(pp_queue_,
                                               stack_display_queue_,
+                                              threed_display_queue_,
                                               stacker_stats_queue_,
                                               plate_solving_queue_,
                                               data_dir_);
