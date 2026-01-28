@@ -1,5 +1,15 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.11)
 project(OpenLiveStacker)
+
+enable_testing()
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+# For Windows: do not override the build settings with GoogleTest's
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 include_directories(include)
 if(NOT WIN32)
@@ -434,11 +444,23 @@ if(NOT ANDROID_BUILD)
     add_executable(ols_cmd src/ols_cmd.cpp)
     add_executable(offline_ols test/offline_sim.cpp)
     add_executable(ols_plate_solver_test test/plate_solver_test.cpp)
+    add_executable(test_depth_anything test/depth_anything_test.cpp)
+    add_executable(test_generate_3d_batch test/generate_3d_batch.cpp)
     target_link_libraries(test_camera ols)
     target_link_libraries(ols_cmd ols)
     target_link_libraries(offline_ols ols)
     target_link_libraries(ols_plate_solver_test ols ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS})
+    target_link_libraries(test_depth_anything ols ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS} ${OPENCV_DNN})
+    target_link_libraries(test_generate_3d_batch ols ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS} ${OPENCV_DNN})
     target_link_libraries(test_indigo_format_parsing ols)
+    add_executable(ols_unit_tests test/unit/test_util.cpp test/unit/test_astronomy.cpp)
+    target_link_libraries(ols_unit_tests GTest::gtest_main ols)
+    
+    include(GoogleTest)
+    gtest_discover_tests(ols_unit_tests WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    
+    add_test(NAME indigo_format_parsing COMMAND test_indigo_format_parsing WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
     install(TARGETS ols_driver_sim ols_cmd offline_ols
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib
