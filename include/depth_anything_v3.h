@@ -4,15 +4,16 @@
 #include <memory>
 #include <string>
 
-namespace ols {
-
-    class DepthAnythingV3 {
+namespace ols
+{
+    class DepthAnythingV3
+    {
     public:
         DepthAnythingV3();
-        bool load(std::string const &model_path);
+        bool load(std::string const& model_path);
         bool is_loaded() const { return loaded_; }
-        cv::Mat estimate_depth(cv::Mat const &input);
-        cv::Mat create_sbs_stereo(cv::Mat const &image, cv::Mat const &depth, float shift_scale = 0.05f);
+        cv::Mat estimate_depth(cv::Mat const& input);
+        cv::Mat create_sbs_stereo(cv::Mat const& image, cv::Mat const& depth, float shift_scale = 0.05f);
 
     private:
         // ORT Resources
@@ -24,5 +25,4 @@ namespace ols {
         const int input_width_ = 518;
         const int input_height_ = 518;
     };
-
 } // namespace

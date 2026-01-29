@@ -4,8 +4,10 @@
 #include <string>
 #include <filesystem>
 
-int main(int argc, char** argv) {
-    if (argc < 2) {
+int main(int argc, char** argv)
+{
+    if (argc < 2)
+    {
         std::cerr << "Usage: " << argv[0] << " <image_path> [model_path]" << std::endl;
         return 1;
     }
@@ -13,20 +15,23 @@ int main(int argc, char** argv) {
     std::string image_path = argv[1];
     std::string model_path = (argc >= 3) ? argv[2] : "data/depth_anything_v3.onnx";
 
-    if (!std::filesystem::exists(image_path)) {
+    if (!std::filesystem::exists(image_path))
+    {
         std::cerr << "Image file does not exist: " << image_path << std::endl;
         return 1;
     }
 
     cv::Mat image = cv::imread(image_path);
-    if (image.empty()) {
+    if (image.empty())
+    {
         std::cerr << "Failed to load image: " << image_path << std::endl;
         return 1;
     }
 
     ols::DepthAnythingV3 depth_model;
     std::cout << "Loading model from: " << model_path << std::endl;
-    if (!depth_model.load(model_path)) {
+    if (!depth_model.load(model_path))
+    {
         std::cerr << "Failed to load model: " << model_path << std::endl;
         std::cerr << "Note: This might be due to an old OpenCV version or a missing model file." << std::endl;
         return 1;
@@ -34,7 +39,8 @@ int main(int argc, char** argv) {
     std::cout << "Model loaded successfully." << std::endl;
 
     cv::Mat depth = depth_model.estimate_depth(image);
-    if (depth.empty()) {
+    if (depth.empty())
+    {
         std::cerr << "Failed to estimate depth." << std::endl;
         return 1;
     }
@@ -49,9 +55,12 @@ int main(int argc, char** argv) {
     std::string stem = p.stem().string();
     std::filesystem::path output_path = p.parent_path() / (stem + "_depth_v3" + ext);
 
-    if (cv::imwrite(output_path.string(), depth_8u)) {
+    if (cv::imwrite(output_path.string(), depth_8u))
+    {
         std::cout << "Depth map saved to: " << output_path.string() << std::endl;
-    } else {
+    }
+    else
+    {
         std::cerr << "Failed to save depth map to: " << output_path.string() << std::endl;
         return 1;
     }
