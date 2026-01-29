@@ -156,5 +156,6 @@ namespace ols {
         bool auto_stretch = true; /// stretch parameters
         double stretch_low=0.5,stretch_high=0.5,stretch_gamma=0.5;
         bool enable_depthanything_3d = false;
+        double depthanything_3d_effect = 0.05;
     };
 }

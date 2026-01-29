@@ -1676,7 +1676,8 @@ function updatePP()
         stretch_low:        g_stretch.cut,
         stretch_high:       g_stretch.gain,
         stretch_gamma:      g_stretch.gamma,
-        enable_depthanything_3d: getBVal("enable_depthanything_3d")
+        enable_depthanything_3d: getBVal("enable_depthanything_3d"),
+        depthanything_3d_effect: parseFloat(getVal("depthanything_3d_effect"))
     };
     restCall('post','/api/stacker/stretch',config,(e)=>{
     });
@@ -1836,6 +1837,7 @@ function startStack()
         save_tiff:          getBVal("save_tiff"),
         save_after:         save_after,
         enable_depthanything_3d : getBVal("enable_depthanything_3d"),
+        depthanything_3d_effect: parseFloat(getVal("depthanything_3d_effect")),
         stretch_low:        g_stretch.cut,
         stretch_high:       g_stretch.gain,
         stretch_gamma:      g_stretch.gamma,

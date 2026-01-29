@@ -108,6 +108,7 @@ namespace ols {
             cmd->stretch_high = content_.get("stretch_high",cmd->stretch_high);
             cmd->stretch_gamma = content_.get("stretch_gamma",cmd->stretch_gamma);
             cmd->enable_depthanything_3d = content_.get("enable_depthanything_3d", cmd->enable_depthanything_3d);
+            cmd->depthanything_3d_effect = content_.get("depthanything_3d_effect", 50.0) * 0.001;
             queue_->push(cmd);
         }
         void validate_name(std::string const &name)
@@ -187,6 +188,7 @@ namespace ols {
             cmd->save_after = content_.get("save_after",cmd->save_after);
             cmd->save_tiff = content_.get("save_tiff",cmd->save_tiff);
             cmd->enable_depthanything_3d = content_.get("enable_depthanything_3d", cmd->enable_depthanything_3d);
+            cmd->depthanything_3d_effect = content_.get("depthanything_3d_effect", 50.0) * 0.001;
 
             cmd->filters.remove_first=content_.get("filters.remove_first",cmd->filters.remove_first);
             cmd->filters.min_stat_size=content_.get("filters.min_stat_size",cmd->filters.min_stat_size);
