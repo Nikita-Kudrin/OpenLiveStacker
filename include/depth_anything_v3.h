@@ -1,8 +1,11 @@
 #pragma once
 #include <opencv2/opencv.hpp>
-#include <opencv2/dnn.hpp>
+#include <onnxruntime_cxx_api.h> // Include ORT
+#include <memory>
+#include <string>
 
 namespace ols {
+
     class DepthAnythingV3 {
     public:
         DepthAnythingV3();
@@ -12,8 +15,14 @@ namespace ols {
         cv::Mat create_sbs_stereo(cv::Mat const &image, cv::Mat const &depth, float shift_scale = 0.05f);
 
     private:
-        cv::dnn::Net net_;
+        // ORT Resources
+        std::shared_ptr<Ort::Env> env_;
+        std::shared_ptr<Ort::Session> session_;
         bool loaded_ = false;
-        cv::Size input_size_ = cv::Size(518, 518);
+
+        // Fixed input size for the model (must match onnxsim export)
+        const int input_width_ = 518;
+        const int input_height_ = 518;
     };
-}
+
+} // namespace

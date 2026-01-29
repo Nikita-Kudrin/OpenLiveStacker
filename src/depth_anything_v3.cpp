@@ -1,84 +1,101 @@
 #include "depth_anything_v3.h"
 #include <booster/log.h>
-#include <opencv2/core/version.hpp>
-#include <fstream>
 #include <vector>
+#include <numeric>
 
 namespace ols {
 
 DepthAnythingV3::DepthAnythingV3() {}
 
 bool DepthAnythingV3::load(std::string const &model_path) {
-    std::vector<std::string> candidates = { model_path };
-    
-    // If we were looking for depth_anything_v3.onnx, also look for model.onnx as a fallback
-    if (model_path.size() >= 22 && model_path.substr(model_path.size() - 22) == "depth_anything_v3.onnx") {
-        candidates.push_back(model_path.substr(0, model_path.size() - 22) + "model.onnx");
-    }
+    try {
+        // Initialize ORT Environment
+        env_ = std::make_shared<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "DepthAnythingV3");
 
-    for (const auto& path : candidates) {
-        try {
-            std::ifstream f(path);
-            if (!f.good()) {
-                continue;
-            }
-            f.close();
+        Ort::SessionOptions session_options;
+        session_options.SetIntraOpNumThreads(4);
+        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
-            net_ = cv::dnn::readNet(path);
-            net_.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-            net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
-            loaded_ = true;
-            BOOSTER_INFO("stacker") << "Depth Anything v3 model loaded from " << path << " (OpenCV " << CV_VERSION << ")";
-            return true;
-        } catch (cv::Exception const &e) {
-            std::string err = e.what();
-            BOOSTER_ERROR("stacker") << "Failed to load Depth Anything v3 model from " << path << ": " << err;
-            BOOSTER_ERROR("stacker") << "OpenCV version: " << CV_VERSION;
-            if (err.find("getInputNodeId") != std::string::npos || err.find("Input node with name") != std::string::npos) {
-                BOOSTER_ERROR("stacker") << "This error often occurs with older OpenCV versions when parsing newer ONNX models.";
-                
-#if CV_VERSION_MAJOR == 4 && CV_VERSION_MINOR == 5 && CV_VERSION_REVISION < 5
-                BOOSTER_ERROR("stacker") << "CRITICAL: Your OpenCV version (4.5." << CV_VERSION_REVISION 
-                                         << ") does not support ONNX models with external weights (.onnx_data files). "
-                                         << "This support was added in OpenCV 4.5.5. Since your model uses external weights, "
-                                         << "you MUST either upgrade OpenCV to >= 4.5.5 or embed the weights into the .onnx file.";
-#endif
-                BOOSTER_ERROR("stacker") << "Try simplifying the model using 'onnxsim' (pip install onnxsim; onnxsim model.onnx simplified.onnx) "
-                                         << "and use the simplified model as depth_anything_v3.onnx.";
-            }
-            BOOSTER_ERROR("stacker") << "Note: if you have a .onnx_data file, ensure it is in the same directory as the .onnx file and has the correct name referenced by the model.";
-            // If it failed to parse, don't try fallback as it might be the same model or just broken
-            return false;
-        }
+        // Try to enable CUDA if available (requires onnxruntime-gpu)
+        // try { OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0); } catch(...) {}
+
+        session_ = std::make_shared<Ort::Session>(*env_, model_path.c_str(), session_options);
+        loaded_ = true;
+
+        BOOSTER_INFO("stacker") << "Depth Anything v3 loaded via ONNX Runtime from " << model_path;
+        return true;
+    } catch (const Ort::Exception& e) {
+        BOOSTER_ERROR("stacker") << "Failed to load model: " << e.what();
+        return false;
     }
-    
-    BOOSTER_WARNING("stacker") << "Depth Anything v3 model file not found in " << model_path << ". 3D feature will be disabled. See README.md for instructions.";
-    return false;
 }
 
 cv::Mat DepthAnythingV3::estimate_depth(cv::Mat const &input) {
-    if (!loaded_) return cv::Mat();
+    if (!loaded_ || input.empty()) return cv::Mat();
 
-    cv::Mat blob;
-    cv::dnn::blobFromImage(input, blob, 1.0 / 255.0, input_size_, cv::Scalar(0.485, 0.456, 0.406), true, false);
-    // Note: normalization values might need adjustment for v3
-    
-    net_.setInput(blob);
-    cv::Mat depth = net_.forward();
+    // 1. Pre-processing
+    cv::Mat resized, float_img;
+    cv::resize(input, resized, cv::Size(input_width_, input_height_));
+    resized.convertTo(float_img, CV_32F, 1.0 / 255.0);
 
-    // Resize back to original size
-    cv::Mat out;
-    cv::resize(depth.reshape(1, input_size_.height), out, input.size());
-    
-    // Normalize depth to 0-1
+    // Normalize (Mean: [0.485, 0.456, 0.406], Std: [0.229, 0.224, 0.225])
+    cv::Mat mean(input_height_, input_width_, CV_32FC3, cv::Scalar(0.485, 0.456, 0.406));
+    cv::Mat std(input_height_, input_width_, CV_32FC3, cv::Scalar(0.229, 0.224, 0.225));
+    cv::subtract(float_img, mean, float_img);
+    cv::divide(float_img, std, float_img);
+
+    // 2. Prepare Input Tensor [1, 1, 3, H, W] (5 Dimensions)
+    // We flatten the image from HWC to CHW
+    cv::Mat channels[3];
+    cv::split(float_img, channels);
+
+    std::vector<float> input_tensor_values;
+    input_tensor_values.reserve(1 * 1 * 3 * input_height_ * input_width_);
+
+    // Push data in CHW order
+    for (int i = 0; i < 3; ++i) {
+        input_tensor_values.insert(input_tensor_values.end(), (float*)channels[i].data, (float*)channels[i].data + input_height_ * input_width_);
+    }
+
+    // Define 5D shape
+    std::vector<int64_t> input_node_dims = {1, 1, 3, input_height_, input_width_};
+
+    auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memory_info, input_tensor_values.data(), input_tensor_values.size(), input_node_dims.data(), input_node_dims.size()
+    );
+
+    // 3. Run Inference
+    const char* input_names[] = {"pixel_values"};
+    const char* output_names[] = {"predicted_depth"};
+
+    auto output_tensors = session_->Run(
+        Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1
+    );
+
+    // 4. Post-processing
+    float* depth_data = output_tensors[0].GetTensorMutableData<float>();
+
+    // Create Mat from output (assuming output is 1x1xHxW or similar)
+    // We wrap the raw pointer. Note: This pointer is valid only while 'output_tensors' is in scope.
+    // We clone it immediately to be safe.
+    cv::Mat raw_depth(input_height_, input_width_, CV_32F, depth_data);
+
+    cv::Mat result;
+    cv::resize(raw_depth, result, input.size());
+
+    // Normalize 0-1 for visualization/processing
     double minVal, maxVal;
-    cv::minMaxLoc(out, &minVal, &maxVal);
-    out = (out - minVal) / (maxVal - minVal);
-    
-    return out;
+    cv::minMaxLoc(result, &minVal, &maxVal);
+    if (maxVal > minVal) {
+        result = (result - minVal) / (maxVal - minVal);
+    }
+
+    return result.clone();
 }
 
 cv::Mat DepthAnythingV3::create_sbs_stereo(cv::Mat const &image, cv::Mat const &depth, float shift_scale) {
+    // (Keep your existing implementation here, it works fine)
     if (image.empty() || depth.empty()) return image;
 
     int w = image.cols;
@@ -104,9 +121,6 @@ cv::Mat DepthAnythingV3::create_sbs_stereo(cv::Mat const &image, cv::Mat const &
             }
         }
     }
-    
-    // Simple hole filling (inpaint would be better but slow)
-    // For now just return concatenated
     cv::Mat sbs;
     cv::hconcat(left, right, sbs);
     return sbs;

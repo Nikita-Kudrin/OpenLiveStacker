@@ -163,10 +163,24 @@ Relogin/reboot.
 pkg-config --modversion opencv4
 ```
 1. Download the Depth Anything v3 ONNX model (e.g., from [Onnx community](https://huggingface.co/onnx-community/depth-anything-v3-small/tree/main/onnx), original repo [HuggingFace](https://huggingface.co/collections/depth-anything/depth-anything-3)).
-2. Place the model file in your `data/` directory. You can keep its name as `model.onnx` or rename it to `depth_anything_v3.onnx`.
+2. Place the model file in your `data/` directory. Rename it to `depth_anything_v3.onnx`.
     - **Note:** If your download includes an additional file like `model.onnx_data`, you **must** also place it in the `data/` directory. Keep its original name (e.g., `model.onnx_data`) as the `.onnx` file contains a reference to it.
-3. In the UI, go to the "Bino" tab and check "3D DepthAnything".
-4. Open the eyepiece view (`eyepiece.html`) to see the 3D Side-by-Side (SBS) rendering. This is most effective when using VR goggles or a binoviewer.
+3. Install onnxruntime
+```shell
+sudo apt update
+sudo apt install pipx
+pipx ensurepath
+
+pipx install onnxsim onnx
+```
+
+Download the appropriate (NON GPU) binary for your OS from https://github.com/microsoft/onnxruntime/releases/
+```shell
+tar -xzvf onnxruntime-linux-x64-1.23.2.tgz 
+sudo cp -r onnxruntime-linux-x64-1.23.2/include/* /usr/local/include/
+sudo cp -r onnxruntime-linux-x64-1.23.2/lib/* /usr/local/lib/
+sudo ldconfig
+```
 
 
 ### Running

@@ -202,6 +202,28 @@ endif()
 
 message("- OpenCV Include Path ${OPENCV_INC}")
 include_directories(${OPENCV_INC})
+
+option(USE_ONNXRUNTIME "Use Microsoft ONNX Runtime for DepthAnything" ON)
+
+if(USE_ONNXRUNTIME)
+    # Look for headers in common locations
+    find_path(ONNXRUNTIME_HDR onnxruntime_cxx_api.h
+            HINTS /usr/local/include /usr/local/include/onnxruntime /opt/onnxruntime/include)
+
+    # Look for the shared library
+    find_library(ONNXRUNTIME_LIB onnxruntime
+            HINTS /usr/local/lib /opt/onnxruntime/lib)
+
+    if(ONNXRUNTIME_HDR AND ONNXRUNTIME_LIB)
+        message("- Found ONNX Runtime: ${ONNXRUNTIME_LIB}")
+        include_directories(${ONNXRUNTIME_HDR})
+        add_definitions(-DUSE_ONNXRUNTIME)
+    else()
+        message(WARNING "- ONNX Runtime NOT found. DepthAnything V3 features may fail or require OpenCV DNN fallback.")
+        set(USE_ONNXRUNTIME OFF)
+    endif()
+endif()
+
 if(WITH_CURL)
     include_directories(${LIBCURL_HDR})
 endif()
@@ -318,13 +340,16 @@ add_library(ols SHARED
     )
 
 target_link_libraries(ols ${LIBTIFF} ${LIBCPPCMS} ${LIBZ} ${LIBBOOSTER} ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS} ${OPENCV_DNN} ${OLS_LIB_EXTRA})
+
+if(USE_ONNXRUNTIME AND ONNXRUNTIME_LIB)
+    target_link_libraries(ols ${ONNXRUNTIME_LIB})
+endif()
+
 if(NOT WIN32)
     target_link_libraries(ols dl)
 else()
     target_link_libraries(ols iphlpapi)
 endif()
-
-
 
 if(ANDROID_BUILD)
     target_link_libraries(ols log)
