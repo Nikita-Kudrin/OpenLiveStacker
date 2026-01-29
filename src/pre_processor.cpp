@@ -52,6 +52,11 @@ namespace ols {
         }
         void darks_and_flats(cv::Mat &frame)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p=(float*)frame.data;
             float *f=(float*)flats_.data;
             float *d=(float*)darks_.data;
@@ -77,6 +82,11 @@ namespace ols {
 
         void darks_only(cv::Mat &frame)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p=(float*)frame.data;
             float *d=(float*)darks_.data;
             int N = frame.rows*frame.cols*channels_;
@@ -218,6 +228,11 @@ namespace ols {
         }
         void remove_gradient_mono(cv::Mat &img)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             int rows = img.rows;
             int cols = img.cols;
             calc_xv_yv(rows,cols);
@@ -293,6 +308,11 @@ namespace ols {
         
         void remove_gradient_color(cv::Mat &img)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             int rows = img.rows;
             int cols = img.cols;
             calc_xv_yv(rows,cols);

@@ -93,6 +93,11 @@ namespace ols {
         
         void calcPC(cv::Mat &A,cv::Mat &B,cv::Mat &spec)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *a = (float *)(A.data);
             float *b = (float *)(B.data);
             spec.create(A.rows,A.cols,CV_32FC2); // complext
@@ -414,6 +419,11 @@ namespace ols {
 
         double calc_avg_brightness(cv::Mat frame,cv::Point2f shift)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             int r0 = quality_roi_.y - shift.y;
             int c0 = quality_roi_.x - shift.x;
             int r1 = r0 + quality_roi_.height;
@@ -465,6 +475,11 @@ namespace ols {
 
         std::pair<double,double> calc_sharpness_score_avg_brightness(cv::Mat frame,cv::Point2f shift)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             int r0 = quality_roi_.y - shift.y;
             int c0 = quality_roi_.x - shift.x;
             int r1 = r0 + quality_roi_.height;

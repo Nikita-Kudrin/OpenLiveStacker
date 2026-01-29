@@ -2,6 +2,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/hal/intrin.hpp>
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+#include <opencv2/core/hal/intrin_legacy_ops.h>
+#endif
+#endif
 
 namespace ols {
 #ifdef USE_CV_SIMD
@@ -50,6 +55,11 @@ namespace ols {
     template<typename UInt,int Delta>
     void remove_hot_pixels_impl(cv::Mat &in,cv::Mat &out)
     {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+        using namespace cv::hal;
+#endif
+#endif
         int step = in.cols;
         for(int r=Delta;r<in.rows-Delta;r++) {
             int c=Delta;

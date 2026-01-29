@@ -6,6 +6,12 @@
 #define OLS_ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+#include <opencv2/core/hal/intrin_legacy_ops.h>
+#endif
+#endif
+
 namespace ols  {
 #ifdef USE_CV_SIMD
 
@@ -13,6 +19,9 @@ namespace ols  {
 
 OLS_ALWAYS_INLINE inline void curve_simd(cv::v_float32x4 &v,int size,float *table)
 { 
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+    using namespace cv::hal;
+#endif
     cv::v_float32x4 vf = v * cv::v_setall_f32(size - 1.0f); 
     cv::v_int32x4 indx = cv::v_floor(vf); 
     indx = cv::v_min(cv::v_setall_s32(size-1),cv::v_max(cv::v_setzero_s32(),indx)); 

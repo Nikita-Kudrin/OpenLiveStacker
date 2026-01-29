@@ -2,6 +2,11 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/hal/intrin.hpp>
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+#include <opencv2/core/hal/intrin_legacy_ops.h>
+#endif
+#endif
 #include <booster/log.h>
 #include "common_data.h"
 #include "simd_utils.h"
@@ -42,6 +47,11 @@ namespace ols {
 
         float sum_rgb_line(float *p,int N,float line_sums[3])
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float v[3]={};
             float maxv=0;
             int i=0;
@@ -122,6 +132,11 @@ namespace ols {
 
         void scale_rgb_and_clip(cv::Mat &m,float f1,float f2,float f3)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p = (float *)m.data;
             int N = m.rows*m.cols*3;
             int i=0;
@@ -201,6 +216,11 @@ namespace ols {
     private:
         void mpl_eps_clip(cv::Mat &am,cv::Mat &bm,float eps)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             int N = am.channels()*am.rows*am.cols;
             int i=0;
             float *a=reinterpret_cast<float*>(am.data);
@@ -222,6 +242,11 @@ namespace ols {
         }
         void devide_eps(cv::Mat am,cv::Mat bm,cv::Mat &cm,float eps)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             cm.create(am.rows,am.cols,am.channels()==1 ? CV_32FC1 : CV_32FC3);
             int N = am.channels()*am.rows*am.cols;
             int i=0;
@@ -251,6 +276,11 @@ namespace ols {
 
         void apply_unsharp(cv::Mat &image)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             cv::Mat blur;
             gaussian_blur(image,blur,unsharp_size_,unsharp_sigma_);
             int N = image.channels()*image.rows*image.cols;
@@ -343,6 +373,11 @@ namespace ols {
 
         void scale_mono_and_clip(cv::Mat &m,float f1)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p = (float *)m.data;
             int N = m.rows*m.cols;
             int i=0;
@@ -363,6 +398,11 @@ namespace ols {
 
         void offset_scale_and_clip(cv::Mat &m,float offset,float scale)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p = (float *)m.data;
             int N = m.rows*m.cols*m.channels();
             int i=0;
@@ -385,6 +425,11 @@ namespace ols {
         }
         void offset_scale_and_clip_gamma(cv::Mat &m,float offset,float scale,float gamma)
         {
+#ifdef USE_CV_SIMD
+#if __has_include(<opencv2/core/hal/intrin_legacy_ops.h>)
+            using namespace cv::hal;
+#endif
+#endif
             float *p = (float *)m.data;
             int N = m.rows*m.cols*m.channels();
             float invg= 1.0f/gamma;
