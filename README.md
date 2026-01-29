@@ -130,27 +130,44 @@ For building for old Intel CPUs without SSE4 support add `-DNO_SSE4=OFF` to cmak
 OpenLiveStacker supports creating a 3D illusion for stacked images using the "Depth Anything v3" model.
 
 To use this feature:
+0. Install the latest release of OpenCV (4.13+) from sources. (By default it's 4.5.x on Ubuntu 22.04)
+```shell
+sudo apt update
+sudo apt install build-essential cmake git pkg-config libgtk-3-dev \
+libavcodec-dev libavformat-dev libswscale-dev
+
+git clone https://github.com/opencv/opencv.git && cd opencv && git checkout 4.13.0
+cd ..
+git clone https://github.com/opencv/opencv_contrib.git && cd opencv_contrib && git checkout 4.13.0 # for extra modules
+
+cd opencv
+mkdir build && cd build
+
+cmake -D CMAKE_BUILD_TYPE=Release \
+      -D CMAKE_INSTALL_PREFIX=/usr/local \
+      -D OPENCV_GENERATE_PKGCONFIG=ON \
+      -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
+      ..
+
+make -j$(nproc)
+
+sudo make install
+sudo ldconfig
+```
+
+Add new line in `/etc/environment` with `PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH`
+Relogin/reboot.
+
+```shell
+# Check OpenCV version
+pkg-config --modversion opencv4
+```
 1. Download the Depth Anything v3 ONNX model (e.g., from [Onnx community](https://huggingface.co/onnx-community/depth-anything-v3-small/tree/main/onnx), original repo [HuggingFace](https://huggingface.co/collections/depth-anything/depth-anything-3)).
 2. Place the model file in your `data/` directory. You can keep its name as `model.onnx` or rename it to `depth_anything_v3.onnx`.
     - **Note:** If your download includes an additional file like `model.onnx_data`, you **must** also place it in the `data/` directory. Keep its original name (e.g., `model.onnx_data`) as the `.onnx` file contains a reference to it.
 3. In the UI, go to the "Bino" tab and check "3D DepthAnything".
 4. Open the eyepiece view (`eyepiece.html`) to see the 3D Side-by-Side (SBS) rendering. This is most effective when using VR goggles or a binoviewer.
 
-#### Troubleshooting
-If you see an error like `Input node with name not found` or `getInputNodeId`, it means your OpenCV version (often 4.5.x on Ubuntu 22.04) is too old to parse the newer ONNX model format.
-- **OpenCV < 4.5.5:** These versions do **not** support ONNX models with external weights (`.onnx_data` files). If your model uses external weights, you must either:
-    1. Upgrade OpenCV to >= 4.5.5.
-    2. Embed the weights into the `.onnx` file using a script:
-       ```python
-       import onnx
-       model = onnx.load("model.onnx")
-       onnx.save_model(model, "depth_anything_v3.onnx", save_as_external_data=False)
-       ```
-- **Simplifying the model:** If you still have issues, try simplifying the model:
-    1. Install `onnxsim`: `pip install onnxsim`
-    2. Simplify the model: `onnxsim model.onnx simplified.onnx`
-    3. Use the `simplified.onnx` as your model (rename it to `depth_anything_v3.onnx`).
-    4. Ensure the `.onnx_data` file is still in the same directory if your model uses external weights and you haven't embedded them.
 
 ### Running
 
