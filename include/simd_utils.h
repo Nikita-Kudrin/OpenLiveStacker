@@ -13,11 +13,11 @@ namespace ols  {
 
 OLS_ALWAYS_INLINE inline void curve_simd(cv::v_float32x4 &v,int size,float *table)
 { 
-    cv::v_float32x4 vf = v * cv::v_setall_f32(size - 1.0f); 
+    cv::v_float32x4 vf = cv::v_mul(v, cv::v_setall_f32(size - 1.0f)); 
     cv::v_int32x4 indx = cv::v_floor(vf); 
     indx = cv::v_min(cv::v_setall_s32(size-1),cv::v_max(cv::v_setzero_s32(),indx)); 
-    cv::v_float32x4 w1 = vf - cv::v_cvt_f32(indx); 
-    cv::v_float32x4 w0 = cv::v_setall_f32(1.0f) - w1; 
+    cv::v_float32x4 w1 = cv::v_sub(vf, cv::v_cvt_f32(indx)); 
+    cv::v_float32x4 w0 = cv::v_sub(cv::v_setall_f32(1.0f), w1); 
 
     int indexes[4]; 
     float p0[4],p1[4]; 
@@ -31,7 +31,7 @@ OLS_ALWAYS_INLINE inline void curve_simd(cv::v_float32x4 &v,int size,float *tabl
     p1[2] = table[indexes[2]+1]; 
     p0[3] = table[indexes[3]]; 
     p1[3] = table[indexes[3]+1]; 
-    v = w0 * cv::v_load(p0) + w1 * cv::v_load(p1); 
+    v = cv::v_add(cv::v_mul(w0, cv::v_load(p0)), cv::v_mul(w1, cv::v_load(p1))); 
 }
 
 #endif

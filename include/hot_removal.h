@@ -62,9 +62,9 @@ namespace ols {
             for(int i=0;i<N;i++) {
                 auto range = load3x3v<vtype,UInt,Delta>(p-Delta*step - Delta,p-Delta,p+Delta*step-Delta);
                 vtype px = cv::v_load(p);
-                vtype diff = px - range.second;
-                vtype grad = range.second - range.first;
-                auto mask = (px > range.second) & (diff > grad);
+                vtype diff = cv::v_sub(px, range.second);
+                vtype grad = cv::v_sub(range.second, range.first);
+                auto mask = cv::v_and(cv::v_gt(px, range.second), cv::v_gt(diff, grad));
                 vtype res = cv::v_select(mask,range.second,px);
                 cv::v_store(o,res);
                 

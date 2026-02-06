@@ -56,9 +56,9 @@ namespace ols {
             for(;i<limit;i+=12,p+=12) {
                 cv::v_float32x4 c[3];
                 cv::v_load_deinterleave(p,c[0],c[1],c[2]);
-                s[0]+=c[0];
-                s[1]+=c[1];
-                s[2]+=c[2];
+                s[0] = cv::v_add(s[0], c[0]);
+                s[1] = cv::v_add(s[1], c[1]);
+                s[2] = cv::v_add(s[2], c[2]);
 
                 auto max_rgb = cv::v_reduce_max(cv::v_max(cv::v_max(c[0],c[1]),c[2]));
                 maxv = std::max(maxv,max_rgb);
@@ -134,9 +134,9 @@ namespace ols {
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             int limit = N/12*12;
             for(;i<limit;i+=12,p+=12) {
-                cv::v_store(p+0,cv::v_max(zero,cv::v_min(one,cv::v_load(p+0)*w0)));
-                cv::v_store(p+4,cv::v_max(zero,cv::v_min(one,cv::v_load(p+4)*w4)));
-                cv::v_store(p+8,cv::v_max(zero,cv::v_min(one,cv::v_load(p+8)*w8)));
+                cv::v_store(p+0,cv::v_max(zero,cv::v_min(one,cv::v_mul(cv::v_load(p+0), w0))));
+                cv::v_store(p+4,cv::v_max(zero,cv::v_min(one,cv::v_mul(cv::v_load(p+4), w4))));
+                cv::v_store(p+8,cv::v_max(zero,cv::v_min(one,cv::v_mul(cv::v_load(p+8), w8))));
             }
 #endif            
             for(;i<N;i+=3,p+=3) {
@@ -211,7 +211,7 @@ namespace ols {
             cv::v_float32x4 zero = cv::v_setall_f32(0.0f);
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) * (cv::v_load(b+i) + veps);
+                cv::v_float32x4 val =  cv::v_mul(cv::v_load(a+i), cv::v_add(cv::v_load(b+i), veps));
                 val = cv::v_max(zero,cv::v_min(one,val));
                 cv::v_store(a+i,val);
             }
@@ -232,7 +232,7 @@ namespace ols {
             int limit = N/4*4;
             cv::v_float32x4 veps = cv::v_setall_f32(eps);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) / (cv::v_load(b+i) + veps);
+                cv::v_float32x4 val =  cv::v_div(cv::v_load(a+i), cv::v_add(cv::v_load(b+i), veps));
                 cv::v_store(c+i,val);
             }
             #endif
@@ -265,7 +265,7 @@ namespace ols {
             cv::v_float32x4 iw_v = cv::v_setall_f32(iw);
             cv::v_float32x4 s_v  = cv::v_setall_f32(unsharp_strength_);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) * iw_v - cv::v_load(b+i)*s_v;
+                cv::v_float32x4 val =  cv::v_sub(cv::v_mul(cv::v_load(a+i), iw_v), cv::v_mul(cv::v_load(b+i), s_v));
                 val = cv::v_max(zero,cv::v_min(one,val));
                 cv::v_store(a+i,val);
             }
@@ -352,7 +352,7 @@ namespace ols {
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             int limit = N/4*4;
             for(;i<limit;i+=4,p+=4) {
-                cv::v_store(p,cv::v_max(zero,cv::v_min(one,cv::v_load(p+0)*w)));
+                cv::v_store(p,cv::v_max(zero,cv::v_min(one,cv::v_mul(cv::v_load(p+0), w))));
             }
 #endif            
             for(;i<N;i++,p++) {
@@ -373,7 +373,7 @@ namespace ols {
             cv::v_float32x4 voffset = cv::v_setall_f32(offset);
             for(;i<(N / 4) * 4;i+=4,p+=4) {
                 cv::v_float32x4 v = cv::v_load(p);
-                v = cv::v_max(zero,cv::v_min(one,(v+voffset)*vscale));
+                v = cv::v_max(zero,cv::v_min(one,cv::v_mul(cv::v_add(v, voffset), vscale)));
                 cv::v_store(p,v);
             }
 #endif            
@@ -403,7 +403,7 @@ namespace ols {
 
             for(i=0;i<limit;i+=4,p+=4) {
                 cv::v_float32x4 v = cv::v_load(p);
-                v = cv::v_min(one,cv::v_max(zero,(v+voffset) * vscale));
+                v = cv::v_min(one,cv::v_max(zero,cv::v_mul(cv::v_add(v, voffset), vscale)));
                 curve_simd(v,M,table);
                 cv::v_store(p,v);
             }

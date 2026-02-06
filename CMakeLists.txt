@@ -407,6 +407,15 @@ install(TARGETS ols ols_driver_sim
 
 
 
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
 if(NOT ANDROID_BUILD)
     include_directories(src)
     add_executable(test_indigo_format_parsing test/test_indigo_format_parsing.cpp)
@@ -414,11 +423,13 @@ if(NOT ANDROID_BUILD)
     add_executable(ols_cmd src/ols_cmd.cpp)
     add_executable(offline_ols test/offline_sim.cpp)
     add_executable(ols_plate_solver_test test/plate_solver_test.cpp)
+    add_executable(stacking_quality_test test/stacking_quality_test.cpp)
     target_link_libraries(test_camera ols)
     target_link_libraries(ols_cmd ols)
     target_link_libraries(offline_ols ols)
     target_link_libraries(ols_plate_solver_test ols ${OPENCV_CORE} ${OPENCV_IMGPROC} ${OPENCV_IMGCODECS})
     target_link_libraries(test_indigo_format_parsing ols)
+    target_link_libraries(stacking_quality_test ols GTest::gtest_main)
     install(TARGETS ols_driver_sim ols_cmd offline_ols
             RUNTIME DESTINATION bin
             LIBRARY DESTINATION lib

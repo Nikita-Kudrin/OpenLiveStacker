@@ -107,16 +107,16 @@ namespace ols {
                 v_load_deinterleave(b,b_re,b_im);
 
                 // mul conj
-                cv::v_float32x4 res_re = a_re*b_re + a_im*b_im;
-                cv::v_float32x4 res_im = a_im*b_re - a_re*b_im;
+                cv::v_float32x4 res_re = cv::v_add(cv::v_mul(a_re, b_re), cv::v_mul(a_im, b_im));
+                cv::v_float32x4 res_im = cv::v_sub(cv::v_mul(a_im, b_re), cv::v_mul(a_re, b_im));
 
                 // abs
-                cv::v_float32x4 res_abs = cv::v_sqrt(res_re*res_re + res_im*res_im);
+                cv::v_float32x4 res_abs = cv::v_sqrt(cv::v_add(cv::v_mul(res_re, res_re), cv::v_mul(res_im, res_im)));
 
                 // div by abs
                 res_abs = cv::v_max(cv::v_setall_f32(1e-38f),res_abs);
-                res_re /= res_abs;
-                res_im /= res_abs;
+                res_re = cv::v_div(res_re, res_abs);
+                res_im = cv::v_div(res_im, res_abs);
 
                 cv::v_store_interleave(s,res_re,res_im);
             }
@@ -438,7 +438,7 @@ namespace ols {
                 cv::v_float32x4 vavg_sum = cv::v_setzero_f32();
                 for(;i<limit;i+=4,line0+=4) {
                     cv::v_float32x4 v0 = cv::v_load(line0);
-                    vavg_sum += v0;
+                    vavg_sum = cv::v_add(vavg_sum, v0);
 #ifdef DEBUG_SCORES
                     cv::v_store((float*)(tmp.data) + quality_roi_.width*frame.channels() * (r-r0) + i,v0);
 #endif                        
@@ -497,11 +497,11 @@ namespace ols {
                     cv::v_float32x4 v0 = cv::v_load(line0);
                     cv::v_float32x4 vx = cv::v_load(line_dx);
                     cv::v_float32x4 vy = cv::v_load(line_dy);
-                    cv::v_float32x4 dx = v0 - vx;
-                    cv::v_float32x4 dy = v0 - vy;
-                    vavg_sum += v0;
-                    cv::v_float32x4 ldiff = dx*dx + dy*dy;
-                    vdiff_sum += ldiff;
+                    cv::v_float32x4 dx = cv::v_sub(v0, vx);
+                    cv::v_float32x4 dy = cv::v_sub(v0, vy);
+                    vavg_sum = cv::v_add(vavg_sum, v0);
+                    cv::v_float32x4 ldiff = cv::v_add(cv::v_mul(dx, dx), cv::v_mul(dy, dy));
+                    vdiff_sum = cv::v_add(vdiff_sum, ldiff);
 #ifdef DEBUG_SCORES
                     cv::v_store((float*)(tmp.data) + quality_roi_.width*frame.channels() * (r-r0) + i,ldiff);
 #endif                        
