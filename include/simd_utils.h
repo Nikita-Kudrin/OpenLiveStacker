@@ -13,11 +13,11 @@ namespace ols  {
 
 OLS_ALWAYS_INLINE inline void curve_simd(cv::v_float32x4 &v,int size,float *table)
 { 
-    cv::v_float32x4 vf = v * cv::v_setall_f32(size - 1.0f); 
+    cv::v_float32x4 vf = v_mul(v, cv::v_setall_f32(size - 1.0f)); 
     cv::v_int32x4 indx = cv::v_floor(vf); 
     indx = cv::v_min(cv::v_setall_s32(size-1),cv::v_max(cv::v_setzero_s32(),indx)); 
-    cv::v_float32x4 w1 = vf - cv::v_cvt_f32(indx); 
-    cv::v_float32x4 w0 = cv::v_setall_f32(1.0f) - w1; 
+    cv::v_float32x4 w1 = v_sub(vf, cv::v_cvt_f32(indx)); 
+    cv::v_float32x4 w0 = v_sub(cv::v_setall_f32(1.0f), w1); 
 
     int indexes[4]; 
     float p0[4],p1[4]; 
@@ -31,7 +31,7 @@ OLS_ALWAYS_INLINE inline void curve_simd(cv::v_float32x4 &v,int size,float *tabl
     p1[2] = table[indexes[2]+1]; 
     p0[3] = table[indexes[3]]; 
     p1[3] = table[indexes[3]+1]; 
-    v = w0 * cv::v_load(p0) + w1 * cv::v_load(p1); 
+    v = v_add(v_mul(w0, cv::v_load(p0)), v_mul(w1, cv::v_load(p1))); 
 }
 
 #endif
@@ -74,6 +74,20 @@ inline void prepare_asinh_curve(int gamma_table_size,float *table,float pw)
     for(int i=1;i<gamma_table_size;i++) {
         table[i] = factor * std::asinh(table[i] * a);
     }
+}
+
+inline void prepare_mtf_curve(int size,float *table,float m)
+{
+    float t_factor = 1.0f / (size - 1);
+    for(int i=0;i<size;i++) {
+        float x = i * t_factor;
+        if(x <= 0) table[i] = 0;
+        else if(x >= 1) table[i] = 1;
+        else {
+            table[i] = (m - 1) * x / ((2 * m - 1) * x - m);
+        }
+    }
+    table[size] = 1.0f;
 }
 
 

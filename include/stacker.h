@@ -107,16 +107,16 @@ namespace ols {
                 v_load_deinterleave(b,b_re,b_im);
 
                 // mul conj
-                cv::v_float32x4 res_re = a_re*b_re + a_im*b_im;
-                cv::v_float32x4 res_im = a_im*b_re - a_re*b_im;
+                cv::v_float32x4 res_re = v_add(v_mul(a_re, b_re), v_mul(a_im, b_im));
+                cv::v_float32x4 res_im = v_sub(v_mul(a_im, b_re), v_mul(a_re, b_im));
 
                 // abs
-                cv::v_float32x4 res_abs = cv::v_sqrt(res_re*res_re + res_im*res_im);
+                cv::v_float32x4 res_abs = cv::v_sqrt(v_add(v_mul(res_re, res_re), v_mul(res_im, res_im)));
 
                 // div by abs
                 res_abs = cv::v_max(cv::v_setall_f32(1e-38f),res_abs);
-                res_re /= res_abs;
-                res_im /= res_abs;
+                res_re = v_div(res_re, res_abs);
+                res_im = v_div(res_im, res_abs);
 
                 cv::v_store_interleave(s,res_re,res_im);
             }
@@ -285,6 +285,7 @@ namespace ols {
             remove_satellites_ = v;
             if(remove_satellites_) {
                 frame_max_ = sum_.clone();
+                frame_min_ = sum_.clone();
             }
         }
 
@@ -307,7 +308,10 @@ namespace ols {
         virtual cv::Mat get_raw_stacked_image() override
         {
             BOOSTER_INFO("stacked") << "So far stacked " << fully_stacked_count_ << std::endl;
-            if(remove_satellites_ && fully_stacked_count_ > 1) {
+            if(remove_satellites_ && fully_stacked_count_ > 2) {
+                stacked_res_ = (sum_ - frame_max_ - frame_min_) * (1.0/ (fully_stacked_count_ - 2));
+            }
+            else if(remove_satellites_ && fully_stacked_count_ > 1) {
                 stacked_res_ = (sum_ - frame_max_) * (1.0/ (fully_stacked_count_ - 1));
             }
             else {
@@ -322,8 +326,10 @@ namespace ols {
             if(rollback_on_pause_ && fully_stacked_count_ > 1) {
                 prev_sum_.copyTo(sum_);
                 fully_stacked_count_ = prev_fully_stacked_count_;
-                if(remove_satellites_) 
+                if(remove_satellites_) {
                     prev_frame_max_.copyTo(frame_max_);
+                    prev_frame_min_.copyTo(frame_min_);
+                }
             }
         }
 
@@ -438,7 +444,7 @@ namespace ols {
                 cv::v_float32x4 vavg_sum = cv::v_setzero_f32();
                 for(;i<limit;i+=4,line0+=4) {
                     cv::v_float32x4 v0 = cv::v_load(line0);
-                    vavg_sum += v0;
+                    vavg_sum = v_add(vavg_sum, v0);
 #ifdef DEBUG_SCORES
                     cv::v_store((float*)(tmp.data) + quality_roi_.width*frame.channels() * (r-r0) + i,v0);
 #endif                        
@@ -497,11 +503,11 @@ namespace ols {
                     cv::v_float32x4 v0 = cv::v_load(line0);
                     cv::v_float32x4 vx = cv::v_load(line_dx);
                     cv::v_float32x4 vy = cv::v_load(line_dy);
-                    cv::v_float32x4 dx = v0 - vx;
-                    cv::v_float32x4 dy = v0 - vy;
-                    vavg_sum += v0;
-                    cv::v_float32x4 ldiff = dx*dx + dy*dy;
-                    vdiff_sum += ldiff;
+                    cv::v_float32x4 dx = v_sub(v0, vx);
+                    cv::v_float32x4 dy = v_sub(v0, vy);
+                    vavg_sum = v_add(vavg_sum, v0);
+                    cv::v_float32x4 ldiff = v_add(v_mul(dx, dx), v_mul(dy, dy));
+                    vdiff_sum = v_add(vdiff_sum, ldiff);
 #ifdef DEBUG_SCORES
                     cv::v_store((float*)(tmp.data) + quality_roi_.width*frame.channels() * (r-r0) + i,ldiff);
 #endif                        
@@ -722,8 +728,10 @@ namespace ols {
             if(rollback_on_pause_ && fully_stacked_count_ >= 1) {
                 sum_.copyTo(prev_sum_);
                 prev_fully_stacked_count_ = fully_stacked_count_;
-                if(remove_satellites_) 
+                if(remove_satellites_) {
                     frame_max_.copyTo(prev_frame_max_);
+                    frame_min_.copyTo(prev_frame_min_);
+                }
             }
             int dx = shift.x;
             int dy = shift.y;
@@ -735,6 +743,8 @@ namespace ols {
             if(remove_satellites_) {
                 cv::Mat max_roi = cv::Mat(frame_max_,src_rect);
                 max_roi = cv::max(max_roi,cv::Mat(img,img_rect));
+                cv::Mat min_roi = cv::Mat(frame_min_,src_rect);
+                min_roi = cv::min(min_roi,cv::Mat(img,img_rect));
             }
         }
 
@@ -756,8 +766,8 @@ namespace ols {
         cv::Rect quality_roi_;
         int fully_stacked_count_ = 0;
         bool remove_satellites_ = false;
-        cv::Mat frame_max_;
-        cv::Mat prev_sum_,prev_frame_max_;
+        cv::Mat frame_max_,frame_min_;
+        cv::Mat prev_sum_,prev_frame_max_,prev_frame_min_;
         int prev_fully_stacked_count_ = 0;
         cv::Point2f current_position_;
         cv::Point2f suspected_current_position_;

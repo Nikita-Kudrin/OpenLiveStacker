@@ -56,9 +56,9 @@ namespace ols {
             for(;i<limit;i+=12,p+=12) {
                 cv::v_float32x4 c[3];
                 cv::v_load_deinterleave(p,c[0],c[1],c[2]);
-                s[0]+=c[0];
-                s[1]+=c[1];
-                s[2]+=c[2];
+                s[0] = v_add(s[0], c[0]);
+                s[1] = v_add(s[1], c[1]);
+                s[2] = v_add(s[2], c[2]);
 
                 auto max_rgb = cv::v_reduce_max(cv::v_max(cv::v_max(c[0],c[1]),c[2]));
                 maxv = std::max(maxv,max_rgb);
@@ -134,9 +134,9 @@ namespace ols {
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             int limit = N/12*12;
             for(;i<limit;i+=12,p+=12) {
-                cv::v_store(p+0,cv::v_max(zero,cv::v_min(one,cv::v_load(p+0)*w0)));
-                cv::v_store(p+4,cv::v_max(zero,cv::v_min(one,cv::v_load(p+4)*w4)));
-                cv::v_store(p+8,cv::v_max(zero,cv::v_min(one,cv::v_load(p+8)*w8)));
+                cv::v_store(p+0,cv::v_max(zero,cv::v_min(one,v_mul(cv::v_load(p+0),w0))));
+                cv::v_store(p+4,cv::v_max(zero,cv::v_min(one,v_mul(cv::v_load(p+4),w4))));
+                cv::v_store(p+8,cv::v_max(zero,cv::v_min(one,v_mul(cv::v_load(p+8),w8))));
             }
 #endif            
             for(;i<N;i+=3,p+=3) {
@@ -190,12 +190,27 @@ namespace ols {
         }
         void stretch(cv::Mat &img)
         {
-            double maxV=1.0;
-            cv::minMaxLoc(img.reshape(1),nullptr,&maxV);
-            double scale = 1.0 / maxV * 0.8;
+            int bins[256]={0};
+            int N = img.rows*img.cols*img.channels();
+            float *p = reinterpret_cast<float*>(img.data);
+            for(int i=0;i<N;i++) {
+                int b = std::max(0,std::min(255,int(p[i]*255)));
+                bins[b]++;
+            }
+            int sum = 0;
+            int hp = 255;
+            for(int i=255;i>=0;i--) {
+                sum += bins[i];
+                if(sum > N * 0.0001) { // 99.99th percentile
+                    hp = i;
+                    break;
+                }
+            }
+            
+            double maxV = std::max(0.01, hp / 255.0);
+            double scale = 1.0 / maxV * 0.95;
             if(scale > 1.0) {
                 img = img.mul(cv::Scalar::all(scale));
-                fprintf(stderr,"Scale=%f\n",scale);
             }
         }
     private:
@@ -211,7 +226,7 @@ namespace ols {
             cv::v_float32x4 zero = cv::v_setall_f32(0.0f);
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) * (cv::v_load(b+i) + veps);
+                cv::v_float32x4 val =  v_mul(cv::v_load(a+i), v_add(cv::v_load(b+i), veps));
                 val = cv::v_max(zero,cv::v_min(one,val));
                 cv::v_store(a+i,val);
             }
@@ -232,7 +247,7 @@ namespace ols {
             int limit = N/4*4;
             cv::v_float32x4 veps = cv::v_setall_f32(eps);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) / (cv::v_load(b+i) + veps);
+                cv::v_float32x4 val =  v_div(cv::v_load(a+i), v_add(cv::v_load(b+i), veps));
                 cv::v_store(c+i,val);
             }
             #endif
@@ -265,7 +280,7 @@ namespace ols {
             cv::v_float32x4 iw_v = cv::v_setall_f32(iw);
             cv::v_float32x4 s_v  = cv::v_setall_f32(unsharp_strength_);
             for(;i<limit;i+=4) {
-                cv::v_float32x4 val =  cv::v_load(a+i) * iw_v - cv::v_load(b+i)*s_v;
+                cv::v_float32x4 val =  v_sub(v_mul(cv::v_load(a+i), iw_v), v_mul(cv::v_load(b+i), s_v));
                 val = cv::v_max(zero,cv::v_min(one,val));
                 cv::v_store(a+i,val);
             }
@@ -318,6 +333,7 @@ namespace ols {
         double mean_target_ = 0.25;
         static constexpr int hist_bins=1024;
         int counters_[hist_bins];
+        int counters_rgb_[3][hist_bins];
         
 
         PostProcessor()
@@ -352,7 +368,7 @@ namespace ols {
             cv::v_float32x4 one  = cv::v_setall_f32(1.0f);
             int limit = N/4*4;
             for(;i<limit;i+=4,p+=4) {
-                cv::v_store(p,cv::v_max(zero,cv::v_min(one,cv::v_load(p+0)*w)));
+                cv::v_store(p,cv::v_max(zero,cv::v_min(one,v_mul(cv::v_load(p+0), w))));
             }
 #endif            
             for(;i<N;i++,p++) {
@@ -373,7 +389,7 @@ namespace ols {
             cv::v_float32x4 voffset = cv::v_setall_f32(offset);
             for(;i<(N / 4) * 4;i+=4,p+=4) {
                 cv::v_float32x4 v = cv::v_load(p);
-                v = cv::v_max(zero,cv::v_min(one,(v+voffset)*vscale));
+                v = cv::v_max(zero,cv::v_min(one,v_mul(v_add(v, voffset), vscale)));
                 cv::v_store(p,v);
             }
 #endif            
@@ -383,15 +399,13 @@ namespace ols {
                 *p = v;
             }
         }
-        void offset_scale_and_clip_gamma(cv::Mat &m,float offset,float scale,float gamma)
+        void offset_scale_and_clip_mtf(cv::Mat &m,float offset,float scale,float mtf_m)
         {
             float *p = (float *)m.data;
             int N = m.rows*m.cols*m.channels();
-            float invg= 1.0f/gamma;
             constexpr int M=128;
             float table[M+1];
-            //prepare_power_curve(M,table,invg);
-            prepare_asinh_curve(M,table,invg);
+            prepare_mtf_curve(M,table,mtf_m);
             int i=0;
 #ifdef USE_CV_SIMD
             int limit = N / 4 * 4;
@@ -403,7 +417,7 @@ namespace ols {
 
             for(i=0;i<limit;i+=4,p+=4) {
                 cv::v_float32x4 v = cv::v_load(p);
-                v = cv::v_min(one,cv::v_max(zero,(v+voffset) * vscale));
+                v = cv::v_min(one,cv::v_max(zero,v_mul(v_add(v, voffset), vscale)));
                 curve_simd(v,M,table);
                 cv::v_store(p,v);
             }
@@ -416,19 +430,54 @@ namespace ols {
             }
         }
 
+        void align_peaks(float scale[3])
+        {
+            int peaks[3] = {0,0,0};
+            for(int c=0;c<3;c++) {
+                int max_val = 0;
+                for(int i=1;i<hist_bins/2;i++) { 
+                    if(counters_rgb_[c][i] > max_val) {
+                        max_val = counters_rgb_[c][i];
+                        peaks[c] = i;
+                    }
+                }
+            }
+            int max_peak = std::max(peaks[0],std::max(peaks[1],peaks[2]));
+            if(max_peak > 0) {
+                for(int c=0;c<3;c++) {
+                    if(peaks[c] > 0)
+                        scale[c] = (float)max_peak / peaks[c];
+                    else
+                        scale[c] = 1.0f;
+                }
+            }
+        }
+
         std::pair<cv::Mat,StretchInfo> post_process_image(cv::Mat raw_image,cv::Rect fully_stacked_area) override
         {
             typedef  std::chrono::time_point<std::chrono::high_resolution_clock> tp;
             cv::Mat tmp = raw_image.clone();
             tp start = std::chrono::high_resolution_clock::now();
-            apply_wb(tmp,fully_stacked_area);
+            
+            int N = calc_hist(tmp(fully_stacked_area));
+            
+            if(tmp.channels() == 3) {
+                float scale[3] = {1,1,1};
+                align_peaks(scale);
+                BOOSTER_INFO("stacker") << "Align Peaks WB " << scale[0] << "," << scale[1] << "," << scale[2];
+                scale_rgb_and_clip(tmp,scale[0],scale[1],scale[2]);
+                N = calc_hist(tmp(fully_stacked_area));
+            }
+            else {
+                apply_wb(tmp,fully_stacked_area);
+            }
+            
             tp wb_apply = std::chrono::high_resolution_clock::now();
             double gscale=1.0;
             double goffset = 0.0;
             double mean = 0.5;
             float gamma_correction = 1.0f;
             
-            int N = calc_hist(tmp(fully_stacked_area));
             if(enable_stretch_) {
                 stretch(N,gscale,goffset,mean);
                 gamma_correction = cv::max(1.0,cv::min(gamma_limit_,log(mean)/log(mean_target_)));
@@ -440,11 +489,19 @@ namespace ols {
                 goffset = -low_cut_ / gscale;
             }
             tp calc_stretch = std::chrono::high_resolution_clock::now();
-            if(gamma_correction == 1.0) {
+            if(!enable_stretch_ && gamma_correction == 1.0) {
                 offset_scale_and_clip(tmp,goffset,gscale);
             }
             else {
-                offset_scale_and_clip_gamma(tmp,goffset,gscale,gamma_correction);
+                float mtf_m = 0.5f;
+                if(enable_stretch_) {
+                    mtf_m = (mean * mean_target_ - mean) / (2 * mean * mean_target_ - mean_target_ - mean);
+                    mtf_m = std::max(0.01f, std::min(0.99f, mtf_m));
+                } else {
+                    // map gamma to mtf_m roughly
+                    mtf_m = 1.0f / (1.0f + gamma_correction); 
+                }
+                offset_scale_and_clip_mtf(tmp,goffset,gscale,mtf_m);
             }
             tp apply_stretch =  std::chrono::high_resolution_clock::now();
 
@@ -463,6 +520,7 @@ namespace ols {
         int calc_hist(cv::Mat img)
         {
             memset(counters_,0,sizeof(counters_));
+            memset(counters_rgb_,0,sizeof(counters_rgb_));
             int N=img.rows*img.cols;
             if(img.channels() == 3) {
                 for(int r=0;r<img.rows;r++) {
@@ -471,6 +529,12 @@ namespace ols {
                         float R = *p++;
                         float G = *p++;
                         float B = *p++;
+                        unsigned r_idx = unsigned(R * (hist_bins-1)) & (hist_bins-1);
+                        unsigned g_idx = unsigned(G * (hist_bins-1)) & (hist_bins-1);
+                        unsigned b_idx = unsigned(B * (hist_bins-1)) & (hist_bins-1);
+                        counters_rgb_[0][r_idx]++;
+                        counters_rgb_[1][g_idx]++;
+                        counters_rgb_[2][b_idx]++;
                         unsigned Y = unsigned((0.3f * R + 0.6f * G + 0.1f * B) * (hist_bins-1));
                         Y &= (hist_bins - 1); // protect gainst overflow
                         counters_[Y]++;

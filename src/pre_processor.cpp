@@ -62,8 +62,8 @@ namespace ols {
             cv::v_float32x4 one = cv::v_setall_f32(1.0f);
             int limit = N/4*4;
             for(;i<limit;i+=4,p+=4,d+=4,f+=4) {
-                cv::v_float32x4 v=cv::v_max(zero,cv::v_load(p) - cv::v_load(d));
-                v = cv::v_min(cv::v_load(f) * v,one);
+                cv::v_float32x4 v=cv::v_max(zero, v_sub(cv::v_load(p), cv::v_load(d)));
+                v = cv::v_min(v_mul(cv::v_load(f), v),one);
                 cv::v_store(p,v);
             }
 #endif            
@@ -85,7 +85,7 @@ namespace ols {
             cv::v_float32x4 zero = cv::v_setzero_f32();
             int limit = N/4*4;
             for(;i<limit;i+=4,p+=4,d+=4) {
-                auto v=cv::v_max(zero,cv::v_load(p) - cv::v_load(d));
+                auto v=cv::v_max(zero, v_sub(cv::v_load(p), cv::v_load(d)));
                 cv::v_store(p,v);
             }
 #endif            
@@ -238,8 +238,8 @@ namespace ols {
                 for(;c<limit;c+=4,p+=4) {
                     cv::v_float32x4 val = cv::v_load(p);
                     cv::v_float32x4 vec_x = cv::v_load(xv + c);
-                    Ay_v += val * vec_y;
-                    Ax_v += val * vec_x;
+                    Ay_v = v_add(Ay_v, v_mul(val, vec_y));
+                    Ax_v = v_add(Ax_v, v_mul(val, vec_x));
                 }
                 Ay += cv::v_reduce_sum(Ay_v);
                 Ax += cv::v_reduce_sum(Ax_v);
@@ -264,9 +264,9 @@ namespace ols {
                 cv::v_float32x4 v_0 = cv::v_setzero_f32();
                 cv::v_float32x4 v_1 = cv::v_setall_f32(1.0f);
                 for(;c<limit;c+=4,p+=4) {
-                    cv::v_float32x4 plane_v = cv::v_load(xv + c) * Ax_v + row_p_v;
+                    cv::v_float32x4 plane_v = v_add(v_mul(cv::v_load(xv + c), Ax_v), row_p_v);
                     cv::v_float32x4 val_v = cv::v_load(p);
-                    val_v = cv::v_max(v_0,cv::v_min(v_1,val_v - plane_v));
+                    val_v = cv::v_max(v_0,cv::v_min(v_1, v_sub(val_v, plane_v)));
                     cv::v_store(p,val_v);
                 }
                 #endif
@@ -319,14 +319,14 @@ namespace ols {
                     cv::v_load_deinterleave(p,valR,valG,valB);
                     cv::v_float32x4 vec_x = cv::v_load(xv + c);
 
-                    ARy_v += valR * vec_y;
-                    ARx_v += valR * vec_x;
+                    ARy_v = v_add(ARy_v, v_mul(valR, vec_y));
+                    ARx_v = v_add(ARx_v, v_mul(valR, vec_x));
 
-                    AGy_v += valG * vec_y;
-                    AGx_v += valG * vec_x;
+                    AGy_v = v_add(AGy_v, v_mul(valG, vec_y));
+                    AGx_v = v_add(AGx_v, v_mul(valG, vec_x));
 
-                    ABy_v += valB * vec_y;
-                    ABx_v += valB * vec_x;
+                    ABy_v = v_add(ABy_v, v_mul(valB, vec_y));
+                    ABx_v = v_add(ABx_v, v_mul(valB, vec_x));
                 }
 
                 ARy += cv::v_reduce_sum(ARy_v);
@@ -376,14 +376,14 @@ namespace ols {
                 cv::v_float32x4 v_1 = cv::v_setall_f32(1.0f);
 
                 for(;c<limit;c+=4,p+=12) {
-                    cv::v_float32x4 planeR_v = cv::v_load(xv + c) * ARx_v + rowR_p_v;
-                    cv::v_float32x4 planeG_v = cv::v_load(xv + c) * AGx_v + rowG_p_v;
-                    cv::v_float32x4 planeB_v = cv::v_load(xv + c) * ABx_v + rowB_p_v;
+                    cv::v_float32x4 planeR_v = v_add(v_mul(cv::v_load(xv + c), ARx_v), rowR_p_v);
+                    cv::v_float32x4 planeG_v = v_add(v_mul(cv::v_load(xv + c), AGx_v), rowG_p_v);
+                    cv::v_float32x4 planeB_v = v_add(v_mul(cv::v_load(xv + c), ABx_v), rowB_p_v);
                     cv::v_float32x4 valR_v,valG_v,valB_v;
                     cv::v_load_deinterleave(p,valR_v,valG_v,valB_v);
-                    valR_v = cv::v_max(v_0,cv::v_min(v_1,valR_v - planeR_v));
-                    valG_v = cv::v_max(v_0,cv::v_min(v_1,valG_v - planeG_v));
-                    valB_v = cv::v_max(v_0,cv::v_min(v_1,valB_v - planeB_v));
+                    valR_v = cv::v_max(v_0,cv::v_min(v_1, v_sub(valR_v, planeR_v)));
+                    valG_v = cv::v_max(v_0,cv::v_min(v_1, v_sub(valG_v, planeG_v)));
+                    valB_v = cv::v_max(v_0,cv::v_min(v_1, v_sub(valB_v, planeB_v)));
                     cv::v_store_interleave(p,valR_v,valG_v,valB_v);
                 }
                 #endif
